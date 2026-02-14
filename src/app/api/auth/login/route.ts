@@ -24,6 +24,7 @@ function clientIp(request: Request) {
 
 export async function POST(request: Request) {
   const ip = clientIp(request);
+  const now = new Date();
   const config = getRateLimitConfig("RATE_LIMIT_MAX_LOGIN");
   const decision = checkRateLimit(`auth.login:${ip}`, config.max, config.windowMs);
   if (!decision.allowed) {
@@ -31,7 +32,12 @@ export async function POST(request: Request) {
       action: "auth.login",
       actorId: `anon:${ip}`,
       status: "rate_limited",
-      meta: { retryAfterSeconds: decision.retryAfterSeconds }
+      meta: {
+        retryAfterSeconds: decision.retryAfterSeconds,
+        ip,
+        event: "auth.login",
+        occurredAt: now.toISOString()
+      }
     });
     return NextResponse.json(
       {
@@ -53,7 +59,7 @@ export async function POST(request: Request) {
       action: "auth.login",
       actorId: `anon:${ip}`,
       status: "failed",
-      meta: { reason: "validation_error" }
+      meta: { reason: "validation_error", ip, event: "auth.login", occurredAt: now.toISOString() }
     });
     return NextResponse.json(
       {
@@ -97,7 +103,7 @@ export async function POST(request: Request) {
     actorId: user.id,
     status: "success",
     target: user.id,
-    meta: { ip }
+    meta: { ip, event: "auth.login", occurredAt: now.toISOString() }
   });
   return response;
 }

@@ -12,6 +12,8 @@ model User {
   email           String            @unique
   name            String?
   timezone        String            @default("UTC")
+  deletedAt       DateTime?
+  purgeAfter      DateTime?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   dailyCheckins   DailyCheckin[]
@@ -19,6 +21,8 @@ model User {
   alerts          Alert[]
   notifications   NotificationLog[]
   preference      UserPreference?
+
+  @@index([deletedAt, purgeAfter])
 }
 
 model DailyCheckin {

@@ -48,6 +48,9 @@ describe("GET /api/export", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/csv");
+    expect(response.headers.get("x-export-version")).toBe("2026-02-15.v2");
+    expect(response.headers.get("x-export-record-count")).toBe("1");
+    expect(typeof response.headers.get("x-export-generated-at")).toBe("string");
 
     expect(checkinFindManyMock.mock.calls[0][0].where.userId).toBe("u1");
     expect(driftFindManyMock.mock.calls[0][0].where.userId).toBe("u1");
@@ -89,6 +92,8 @@ describe("GET /api/export", () => {
     const [header, dataLine] = text.trim().split("\n");
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-export-version")).toBe("2026-02-15.v2");
+    expect(response.headers.get("x-export-record-count")).toBe("1");
     expect(header).toBe(
       "date,energy,stress,social,key_contact,drift_index,drift_reasons"
     );

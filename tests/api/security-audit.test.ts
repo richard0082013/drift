@@ -3,13 +3,13 @@ import { createSessionToken } from "@/lib/auth/session";
 
 const {
   userUpsertMock,
-  userDeleteMock,
+  userUpdateMock,
   checkinFindManyMock,
   driftFindManyMock,
   notificationLogCreateMock
 } = vi.hoisted(() => ({
   userUpsertMock: vi.fn(),
-  userDeleteMock: vi.fn(),
+  userUpdateMock: vi.fn(),
   checkinFindManyMock: vi.fn(),
   driftFindManyMock: vi.fn(),
   notificationLogCreateMock: vi.fn()
@@ -19,7 +19,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     user: {
       upsert: userUpsertMock,
-      delete: userDeleteMock
+      update: userUpdateMock
     },
     dailyCheckin: {
       findMany: checkinFindManyMock
@@ -50,7 +50,7 @@ describe("security audit and rate limit", () => {
       email: "u1@example.com",
       name: "U1"
     });
-    userDeleteMock.mockResolvedValue({ id: "u1" });
+    userUpdateMock.mockResolvedValue({ id: "u1" });
     checkinFindManyMock.mockResolvedValue([
       {
         date: new Date("2026-02-15"),
@@ -107,12 +107,46 @@ describe("security audit and rate limit", () => {
     ).toBe(true);
     expect(
       notificationLogCreateMock.mock.calls.some(
+        (call) =>
+          call[0]?.data?.channel === "audit" &&
+          call[0]?.data?.payloadJson?.schemaVersion === "audit.v2" &&
+          call[0]?.data?.payloadJson?.meta?.event === "auth.login"
+      )
+    ).toBe(true);
+    expect(
+      notificationLogCreateMock.mock.calls.some(
         (call) => call[0]?.data?.channel === "audit" && call[0]?.data?.template === "export.csv"
       )
     ).toBe(true);
     expect(
       notificationLogCreateMock.mock.calls.some(
         (call) => call[0]?.data?.channel === "audit" && call[0]?.data?.template === "account.delete"
+      )
+    ).toBe(true);
+  });
+
+  it("writes unified audit payload for login validation failure", async () => {
+    const response = await loginPost(
+      new Request("http://localhost/api/auth/login", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-forwarded-for": "7.7.7.7"
+        },
+        body: JSON.stringify({
+          email: "invalid-email"
+        })
+      })
+    );
+    expect(response.status).toBe(400);
+    expect(
+      notificationLogCreateMock.mock.calls.some(
+        (call) =>
+          call[0]?.data?.channel === "audit" &&
+          call[0]?.data?.template === "auth.login" &&
+          call[0]?.data?.status === "failed" &&
+          call[0]?.data?.payloadJson?.schemaVersion === "audit.v2" &&
+          call[0]?.data?.payloadJson?.meta?.event === "auth.login"
       )
     ).toBe(true);
   });
