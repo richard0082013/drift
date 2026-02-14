@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateCheckinInput } from "@/lib/validation/checkin";
+import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
 
 const toUtcDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -18,13 +19,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const userId = request.headers.get("x-user-id") ?? process.env.DEFAULT_USER_ID;
+  const userId = getSessionUserId(request);
 
   if (!userId) {
-    return NextResponse.json(
-      { error: { code: "UNAUTHORIZED", message: "Missing user identity." } },
-      { status: 401 }
-    );
+    return unauthorizedResponse();
   }
 
   try {

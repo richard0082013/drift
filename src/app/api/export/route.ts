@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
 
 type CsvRow = {
   date: string;
@@ -38,12 +39,9 @@ function formatCsv(rows: CsvRow[]) {
 }
 
 export async function GET(request: Request) {
-  const userId = request.headers.get("x-user-id") ?? process.env.DEFAULT_USER_ID;
+  const userId = getSessionUserId(request);
   if (!userId) {
-    return NextResponse.json(
-      { error: { code: "UNAUTHORIZED", message: "Missing user identity." } },
-      { status: 401 }
-    );
+    return unauthorizedResponse();
   }
 
   const [checkins, driftScores] = await Promise.all([
