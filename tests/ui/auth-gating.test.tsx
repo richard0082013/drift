@@ -21,7 +21,7 @@ describe("auth gating", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     routerPush.mockReset();
-    window.localStorage.clear();
+    document.cookie = "drift_session_user=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
     mockPathname = "/checkin";
     mockNext = "/checkin";
   });
@@ -57,6 +57,12 @@ describe("auth gating", () => {
 
   it("redirects to next page after login", async () => {
     mockNext = "/alerts";
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      })
+    );
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
@@ -64,13 +70,16 @@ describe("auth gating", () => {
     await waitFor(() => {
       expect(routerPush).toHaveBeenCalledWith("/alerts");
     });
-    expect(window.localStorage.getItem("drift_auth_user")).toBe("demo-user");
+    expect(global.fetch).toHaveBeenCalledWith("/api/auth/login", expect.any(Object));
   });
 
   it("shows generic login error without internal details", async () => {
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("quota exploded");
-    });
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: { message: "internal stack trace" } }), {
+        status: 500,
+        headers: { "content-type": "application/json" }
+      })
+    );
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
@@ -78,6 +87,6 @@ describe("auth gating", () => {
     await waitFor(() => {
       expect(screen.getByText("Unable to sign in right now.")).toBeInTheDocument();
     });
-    expect(screen.queryByText(/quota exploded/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/stack trace/i)).not.toBeInTheDocument();
   });
 });
