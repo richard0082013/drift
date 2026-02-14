@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findManyMock, deleteManyMock, notificationLogCreateMock, userUpsertMock } = vi.hoisted(() => ({
+const {
+  findManyMock,
+  deleteManyMock,
+  notificationLogCreateMock,
+  userUpsertMock,
+  queryRawUnsafeMock
+} = vi.hoisted(() => ({
   findManyMock: vi.fn(),
   deleteManyMock: vi.fn(),
   notificationLogCreateMock: vi.fn(),
-  userUpsertMock: vi.fn()
+  userUpsertMock: vi.fn(),
+  queryRawUnsafeMock: vi.fn()
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -14,6 +21,7 @@ vi.mock("@/lib/db", () => ({
       deleteMany: deleteManyMock,
       upsert: userUpsertMock
     },
+    $queryRawUnsafe: queryRawUnsafeMock,
     notificationLog: {
       create: notificationLogCreateMock
     }
@@ -30,6 +38,7 @@ describe("POST /api/internal/jobs/purge-users", () => {
     deleteManyMock.mockResolvedValue({ count: 0 });
     userUpsertMock.mockResolvedValue({ id: "internal:purge-job" });
     notificationLogCreateMock.mockResolvedValue({ id: "audit1" });
+    queryRawUnsafeMock.mockResolvedValue([]);
   });
 
   it("returns forbidden for missing internal token", async () => {
@@ -52,12 +61,32 @@ describe("POST /api/internal/jobs/purge-users", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
     expect(body.purgedCount).toBe(2);
     expect(body.purgedUserIds).toEqual(["u1", "u2"]);
+    expect(typeof body.runAt).toBe("string");
     expect(deleteManyMock).toHaveBeenCalledWith({
       where: { id: { in: ["u1", "u2"] } }
     });
     expect(notificationLogCreateMock).toHaveBeenCalled();
+  });
+
+  it("falls back to raw query when prisma client does not know retention args", async () => {
+    findManyMock.mockRejectedValue(new Error("Unknown argument `deletedAt`"));
+    queryRawUnsafeMock.mockResolvedValue([{ id: "u9" }]);
+
+    const response = await POST(
+      new Request("http://localhost/api/internal/jobs/purge-users?limit=1", {
+        method: "POST",
+        headers: { "x-internal-token": "token-123" }
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.purgedUserIds).toEqual(["u9"]);
+    expect(queryRawUnsafeMock).toHaveBeenCalled();
   });
 
   it("validates limit boundary", async () => {

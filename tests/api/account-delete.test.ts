@@ -62,6 +62,7 @@ describe("/api/account/delete", () => {
     expect(body.deleted).toBe(true);
     expect(body.strategy).toBe("soft");
     expect(typeof body.purgeAfter).toBe("string");
+    expect(body.message).toBe("Account scheduled for permanent deletion.");
     expect(updateUserMock).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "u1" },

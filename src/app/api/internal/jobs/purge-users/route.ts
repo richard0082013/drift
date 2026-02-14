@@ -22,6 +22,44 @@ function isInternalAuthorized(request: Request) {
   return Boolean(token) && token === getInternalToken();
 }
 
+function isPrismaRetentionArgError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return (
+    error.message.includes("Unknown argument `deletedAt`") ||
+    error.message.includes("Unknown argument `purgeAfter`")
+  );
+}
+
+async function findDueUsers(now: Date, limit: number) {
+  try {
+    return await db.user.findMany({
+      where: {
+        deletedAt: { not: null },
+        purgeAfter: { not: null, lte: now }
+      },
+      orderBy: { purgeAfter: "asc" },
+      take: limit,
+      select: { id: true }
+    });
+  } catch (error) {
+    if (!isPrismaRetentionArgError(error)) {
+      throw error;
+    }
+
+    const rows = (await db.$queryRawUnsafe(
+      `SELECT id FROM "User"
+       WHERE deletedAt IS NOT NULL AND purgeAfter IS NOT NULL AND purgeAfter <= ?
+       ORDER BY purgeAfter ASC
+       LIMIT ?`,
+      now.toISOString(),
+      limit
+    )) as Array<{ id: string }>;
+    return rows;
+  }
+}
+
 export async function POST(request: Request) {
   if (!isInternalAuthorized(request)) {
     return NextResponse.json(
@@ -49,15 +87,7 @@ export async function POST(request: Request) {
   }
 
   const now = new Date();
-  const dueUsers = await db.user.findMany({
-    where: {
-      deletedAt: { not: null },
-      purgeAfter: { not: null, lte: now }
-    },
-    orderBy: { purgeAfter: "asc" },
-    take: limit,
-    select: { id: true }
-  });
+  const dueUsers = await findDueUsers(now, limit);
 
   const userIds = dueUsers.map((user) => user.id);
   if (userIds.length > 0) {
@@ -79,6 +109,7 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({
+    ok: true,
     purgedCount: userIds.length,
     purgedUserIds: userIds,
     runAt: now.toISOString()

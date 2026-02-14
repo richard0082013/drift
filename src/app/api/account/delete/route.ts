@@ -20,6 +20,48 @@ function getPurgeAfter(now: Date) {
   return new Date(now.getTime() + safeDays * 24 * 60 * 60 * 1000);
 }
 
+function isPrismaRetentionArgError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return (
+    error.message.includes("Unknown argument `deletedAt`") ||
+    error.message.includes("Unknown argument `purgeAfter`")
+  );
+}
+
+async function markUserForPurge(userId: string, now: Date, purgeAfter: Date) {
+  try {
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        deletedAt: now,
+        purgeAfter
+      }
+    });
+    return;
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2025") {
+      throw error;
+    }
+    if (!isPrismaRetentionArgError(error)) {
+      throw error;
+    }
+  }
+
+  const updated = await db.$executeRawUnsafe(
+    `UPDATE "User" SET deletedAt = ?, purgeAfter = ?, updatedAt = ? WHERE id = ?`,
+    now.toISOString(),
+    purgeAfter.toISOString(),
+    now.toISOString(),
+    userId
+  );
+
+  if (!updated) {
+    throw { code: "P2025" };
+  }
+}
+
 async function handleDelete(request: Request) {
   const userId = getSessionUserId(request);
   const now = new Date();
@@ -60,13 +102,7 @@ async function handleDelete(request: Request) {
 
   try {
     const purgeAfter = getPurgeAfter(now);
-    await db.user.update({
-      where: { id: userId },
-      data: {
-        deletedAt: now,
-        purgeAfter
-      }
-    });
+    await markUserForPurge(userId, now, purgeAfter);
 
     await trackMetricEvent({
       event: "account.delete",
@@ -90,7 +126,8 @@ async function handleDelete(request: Request) {
     return NextResponse.json({
       deleted: true,
       strategy: "soft",
-      purgeAfter: purgeAfter.toISOString()
+      purgeAfter: purgeAfter.toISOString(),
+      message: "Account scheduled for permanent deletion."
     });
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2025") {
