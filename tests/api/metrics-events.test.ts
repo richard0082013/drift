@@ -9,7 +9,7 @@ const {
   notificationLogCreateMock,
   checkinFindManyMock,
   driftFindManyMock,
-  userDeleteMock,
+  userUpdateMock,
   sendReminderMock
 } = vi.hoisted(() => ({
   userUpsertMock: vi.fn(),
@@ -19,7 +19,7 @@ const {
   notificationLogCreateMock: vi.fn(),
   checkinFindManyMock: vi.fn(),
   driftFindManyMock: vi.fn(),
-  userDeleteMock: vi.fn(),
+  userUpdateMock: vi.fn(),
   sendReminderMock: vi.fn()
 }));
 
@@ -27,7 +27,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     user: {
       upsert: userUpsertMock,
-      delete: userDeleteMock
+      update: userUpdateMock
     },
     dailyCheckin: {
       create: checkinCreateMock,
@@ -71,7 +71,7 @@ describe("metrics events on key flows", () => {
       email: "u1@example.com",
       name: "U1"
     });
-    userDeleteMock.mockResolvedValue({ id: "u1" });
+    userUpdateMock.mockResolvedValue({ id: "u1" });
     checkinCreateMock.mockResolvedValue({ id: "c1" });
     preferenceFindManyMock.mockResolvedValue([
       {
