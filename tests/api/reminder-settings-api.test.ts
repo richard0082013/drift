@@ -52,6 +52,8 @@ describe("/api/settings/reminder", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({
       settings: {
+        reminderHourLocal: 8,
+        notificationsEnabled: false,
         reminderTime: "08:00",
         timezone: "America/New_York",
         enabled: false
@@ -86,7 +88,8 @@ describe("/api/settings/reminder", () => {
     expect(preferenceUpsertMock).not.toHaveBeenCalled();
   });
 
-  it("saves settings and upserts user preference", async () => {
+  it("saves settings with legacy fields and upserts user preference", async () => {
+    userFindUniqueMock.mockResolvedValue({ timezone: "UTC" });
     userUpsertMock.mockResolvedValue({ id: "u1" });
     preferenceUpsertMock.mockResolvedValue({ id: "p1" });
 
@@ -109,6 +112,8 @@ describe("/api/settings/reminder", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({
       settings: {
+        reminderHourLocal: 10,
+        notificationsEnabled: true,
         reminderTime: "10:00",
         timezone: "UTC",
         enabled: true
@@ -136,6 +141,48 @@ describe("/api/settings/reminder", () => {
         userId: "u1",
         reminderHourLocal: 10,
         notificationsEnabled: true
+      }
+    });
+  });
+
+  it("supports FE contract fields reminderHourLocal + notificationsEnabled", async () => {
+    userFindUniqueMock.mockResolvedValue({ timezone: "Asia/Shanghai" });
+    userUpsertMock.mockResolvedValue({ id: "u1" });
+    preferenceUpsertMock.mockResolvedValue({ id: "p1" });
+
+    const response = await POST(
+      new Request("http://localhost/api/settings/reminder", {
+        method: "POST",
+        headers: {
+          cookie: `drift_session=${createSessionToken("u1")}`,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          reminderHourLocal: 6,
+          notificationsEnabled: false
+        })
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.settings).toEqual({
+      reminderHourLocal: 6,
+      notificationsEnabled: false,
+      reminderTime: "06:00",
+      timezone: "Asia/Shanghai",
+      enabled: false
+    });
+    expect(preferenceUpsertMock).toHaveBeenCalledWith({
+      where: { userId: "u1" },
+      update: {
+        reminderHourLocal: 6,
+        notificationsEnabled: false
+      },
+      create: {
+        userId: "u1",
+        reminderHourLocal: 6,
+        notificationsEnabled: false
       }
     });
   });

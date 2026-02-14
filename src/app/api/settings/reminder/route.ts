@@ -3,12 +3,16 @@ import { db } from "@/lib/db";
 import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
 
 type ReminderSettings = {
+  reminderHourLocal: number;
+  notificationsEnabled: boolean;
   reminderTime: string;
   timezone: string;
   enabled: boolean;
 };
 
 const DEFAULT_SETTINGS: ReminderSettings = {
+  reminderHourLocal: 20,
+  notificationsEnabled: true,
   reminderTime: "20:00",
   timezone: "UTC",
   enabled: true
@@ -63,6 +67,16 @@ function validationError(message: string) {
   );
 }
 
+function toReminderSettings(reminderHourLocal: number, timezone: string, notificationsEnabled: boolean) {
+  return {
+    reminderHourLocal,
+    notificationsEnabled,
+    reminderTime: toReminderTime(reminderHourLocal),
+    timezone,
+    enabled: notificationsEnabled
+  };
+}
+
 export async function GET(request: Request) {
   const userId = getSessionUserId(request);
   if (!userId) {
@@ -83,14 +97,13 @@ export async function GET(request: Request) {
     })
   ]);
 
-  const reminderHour = preference?.reminderHourLocal ?? 20;
+  const reminderHourLocal = preference?.reminderHourLocal ?? DEFAULT_SETTINGS.reminderHourLocal;
+  const notificationsEnabled =
+    preference?.notificationsEnabled ?? DEFAULT_SETTINGS.notificationsEnabled;
+  const timezone = user?.timezone ?? DEFAULT_SETTINGS.timezone;
 
   return NextResponse.json({
-    settings: {
-      reminderTime: toReminderTime(reminderHour),
-      timezone: user?.timezone ?? DEFAULT_SETTINGS.timezone,
-      enabled: preference?.notificationsEnabled ?? DEFAULT_SETTINGS.enabled
-    }
+    settings: toReminderSettings(reminderHourLocal, timezone, notificationsEnabled)
   });
 }
 
@@ -114,26 +127,55 @@ export async function POST(request: Request) {
 
   const candidate = payload as Partial<ReminderSettings>;
 
-  if (typeof candidate.reminderTime !== "string") {
-    return validationError("reminderTime is required.");
+  let reminderHourLocal: number | null = null;
+  if (typeof candidate.reminderHourLocal === "number") {
+    if (
+      Number.isInteger(candidate.reminderHourLocal) &&
+      candidate.reminderHourLocal >= 0 &&
+      candidate.reminderHourLocal <= 23
+    ) {
+      reminderHourLocal = candidate.reminderHourLocal;
+    } else {
+      return validationError("reminderHourLocal must be an integer between 0 and 23.");
+    }
   }
 
-  const reminderHour = parseReminderHour(candidate.reminderTime);
-  if (reminderHour === null) {
-    return validationError("reminderTime must be in HH:00 format.");
+  if (reminderHourLocal === null && typeof candidate.reminderTime === "string") {
+    reminderHourLocal = parseReminderHour(candidate.reminderTime);
+    if (reminderHourLocal === null) {
+      return validationError("reminderTime must be in HH:00 format.");
+    }
   }
 
-  if (typeof candidate.timezone !== "string" || !candidate.timezone.trim()) {
-    return validationError("timezone is required.");
+  if (reminderHourLocal === null) {
+    return validationError("reminderHourLocal or reminderTime is required.");
   }
 
-  const timezone = candidate.timezone.trim();
-  if (!isValidTimezone(timezone)) {
-    return validationError("timezone is invalid.");
+  let notificationsEnabled: boolean | null = null;
+  if (typeof candidate.notificationsEnabled === "boolean") {
+    notificationsEnabled = candidate.notificationsEnabled;
+  } else if (typeof candidate.enabled === "boolean") {
+    notificationsEnabled = candidate.enabled;
+  } else {
+    return validationError("notificationsEnabled or enabled must be boolean.");
   }
 
-  if (typeof candidate.enabled !== "boolean") {
-    return validationError("enabled must be boolean.");
+  const existingUser = await db.user.findUnique({
+    where: { id: userId },
+    select: { timezone: true }
+  });
+
+  let timezone = existingUser?.timezone ?? DEFAULT_SETTINGS.timezone;
+  if (typeof candidate.timezone === "string") {
+    if (!candidate.timezone.trim()) {
+      return validationError("timezone is required.");
+    }
+
+    const normalizedTimezone = candidate.timezone.trim();
+    if (!isValidTimezone(normalizedTimezone)) {
+      return validationError("timezone is invalid.");
+    }
+    timezone = normalizedTimezone;
   }
 
   await db.user.upsert({
@@ -152,21 +194,17 @@ export async function POST(request: Request) {
   await db.userPreference.upsert({
     where: { userId },
     update: {
-      reminderHourLocal: reminderHour,
-      notificationsEnabled: candidate.enabled
+      reminderHourLocal,
+      notificationsEnabled
     },
     create: {
       userId,
-      reminderHourLocal: reminderHour,
-      notificationsEnabled: candidate.enabled
+      reminderHourLocal,
+      notificationsEnabled
     }
   });
 
   return NextResponse.json({
-    settings: {
-      reminderTime: toReminderTime(reminderHour),
-      timezone,
-      enabled: candidate.enabled
-    }
+    settings: toReminderSettings(reminderHourLocal, timezone, notificationsEnabled)
   });
 }

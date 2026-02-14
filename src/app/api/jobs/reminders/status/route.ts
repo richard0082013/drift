@@ -66,7 +66,14 @@ export async function GET(request: Request) {
       orderBy: {
         createdAt: "desc"
       },
-      take: limit
+      take: limit,
+      select: {
+        id: true,
+        status: true,
+        sentAt: true,
+        createdAt: true,
+        channel: true
+      }
     }),
     db.userPreference.findUnique({
       where: { userId },
