@@ -1,13 +1,65 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import WeeklyInsightsPage from "@/app/insights/page";
+import InsightsPage from "@/app/insights/page";
 
 let mockPathname = "/insights";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname
 }));
+
+function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "content-type": "application/json" }
+  });
+}
+
+function setupFetchMock(options?: {
+  sessionStatus?: number;
+  insightsStatus?: number;
+  insightsPayload?: unknown;
+}) {
+  const {
+    sessionStatus = 200,
+    insightsStatus = 200,
+    insightsPayload = {
+      weekStart: "2026-02-08",
+      weekEnd: "2026-02-14",
+      days: 7,
+      summary: {
+        checkinCount: 3,
+        alertCount: 1,
+        averages: {
+          energy: 3.2,
+          stress: 3.1,
+          social: 2.8,
+          driftIndex: 0.6
+        },
+        driftLevel: "moderate",
+        hasEnoughData: true
+      },
+      highlights: ["3/7 check-ins completed in this window."],
+      suggestions: ["Keep one stable routine for the next two days."]
+    }
+  } = options ?? {};
+
+  return vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+    const url = typeof input === "string" ? input : input.url;
+    const method = (init?.method ?? "GET").toUpperCase();
+
+    if (url === "/api/auth/session") {
+      return jsonResponse({ ok: sessionStatus === 200 }, sessionStatus);
+    }
+
+    if (url.startsWith("/api/insights/weekly") && method === "GET") {
+      return jsonResponse(insightsPayload, insightsStatus);
+    }
+
+    return jsonResponse({ error: "unexpected request" }, 500);
+  });
+}
 
 describe("weekly insights page", () => {
   beforeEach(() => {
@@ -16,14 +68,9 @@ describe("weekly insights page", () => {
   });
 
   it("shows login guidance when unauthenticated", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ error: { code: "UNAUTHORIZED" } }), {
-        status: 401,
-        headers: { "content-type": "application/json" }
-      })
-    );
+    setupFetchMock({ sessionStatus: 401 });
 
-    render(<WeeklyInsightsPage />);
+    render(<InsightsPage />);
 
     await waitFor(() => {
       expect(screen.getByText("Please log in to continue.")).toBeInTheDocument();
@@ -34,75 +81,78 @@ describe("weekly insights page", () => {
     );
   });
 
-  it("shows summary and suggestions when data exists", async () => {
-    vi.spyOn(global, "fetch")
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ session: { userId: "u1" } }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            summary: "Your energy trend stayed stable this week.",
-            suggestions: ["Keep a consistent check-in time.", "Plan one social reset this weekend."]
-          }),
-          { status: 200, headers: { "content-type": "application/json" } }
-        )
-      );
+  it("loads weekly insights from real contract", async () => {
+    setupFetchMock();
 
-    render(<WeeklyInsightsPage />);
+    render(<InsightsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Your energy trend stayed stable this week.")).toBeInTheDocument();
-      expect(screen.getByText("Keep a consistent check-in time.")).toBeInTheDocument();
-      expect(screen.getByText("Plan one social reset this weekend.")).toBeInTheDocument();
+      expect(screen.getByText(/Window:/)).toBeInTheDocument();
+      expect(screen.getByText(/2026-02-08/)).toBeInTheDocument();
+      expect(screen.getByText(/Drift: moderate/)).toBeInTheDocument();
+      expect(screen.getByText(/3\/7 check-ins completed/)).toBeInTheDocument();
     });
   });
 
-  it("shows empty state when api has no insight payload", async () => {
-    vi.spyOn(global, "fetch")
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ session: { userId: "u1" } }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ data: {} }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      );
+  it("switches days range and requests weekly endpoint", async () => {
+    const fetchSpy = setupFetchMock();
 
-    render(<WeeklyInsightsPage />);
+    render(<InsightsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("No weekly insights yet.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "7 days" })).toHaveAttribute("aria-pressed", "true");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "14 days" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "14 days" })).toHaveAttribute("aria-pressed", "true");
+    });
+
+    expect(
+      fetchSpy.mock.calls.some(
+        ([url]) => typeof url === "string" && url.includes("/api/insights/weekly?days=14")
+      )
+    ).toBe(true);
+  });
+
+  it("shows clear error state on api failure", async () => {
+    setupFetchMock({ insightsStatus: 500, insightsPayload: { error: "bad" } });
+
+    render(<InsightsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to load weekly insights.")).toBeInTheDocument();
     });
   });
 
-  it("shows generic error without internal details", async () => {
-    vi.spyOn(global, "fetch")
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ session: { userId: "u1" } }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: { message: "db stack trace" } }), {
-          status: 500,
-          headers: { "content-type": "application/json" }
-        })
-      );
+  it("shows empty-state hint when data is insufficient", async () => {
+    setupFetchMock({
+      insightsPayload: {
+        weekStart: "2026-02-08",
+        weekEnd: "2026-02-14",
+        days: 7,
+        summary: {
+          checkinCount: 0,
+          alertCount: 0,
+          averages: {
+            energy: null,
+            stress: null,
+            social: null,
+            driftIndex: null
+          },
+          driftLevel: "low",
+          hasEnoughData: false
+        },
+        highlights: ["No check-ins were recorded this week."],
+        suggestions: ["Keep your next check-in consistent to maintain trend quality."]
+      }
+    });
 
-    render(<WeeklyInsightsPage />);
+    render(<InsightsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Unable to load weekly insights.")).toBeInTheDocument();
+      expect(screen.getByText("Not enough data yet to derive stable trends.")).toBeInTheDocument();
     });
-    expect(screen.queryByText(/stack trace/i)).not.toBeInTheDocument();
   });
 });

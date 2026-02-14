@@ -88,6 +88,28 @@ function isValidTime(value: string): boolean {
   return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
 }
 
+function normalizeReminderSettings(payload: unknown): ReminderSettings {
+  if (!payload || typeof payload !== "object") {
+    return DEFAULT_SETTINGS;
+  }
+
+  const source = payload as { settings?: Partial<ReminderSettings> };
+  const settings = source.settings ?? {};
+
+  const reminderTime =
+    typeof settings.reminderTime === "string"
+      ? settings.reminderTime
+      : DEFAULT_SETTINGS.reminderTime;
+
+  const timezone = typeof settings.timezone === "string" ? settings.timezone : DEFAULT_SETTINGS.timezone;
+  const enabled =
+    typeof settings.enabled === "boolean"
+      ? settings.enabled
+      : DEFAULT_SETTINGS.enabled;
+
+  return { reminderTime, timezone, enabled };
+}
+
 export default function SettingsPage() {
   const pathname = usePathname();
   const [authChecked, setAuthChecked] = useState(false);
@@ -147,19 +169,10 @@ export default function SettingsPage() {
           return;
         }
 
-        const payload = (await response.json()) as {
-          settings?: Partial<ReminderSettings>;
-        };
+        const payload = (await response.json()) as unknown;
 
-        if (active && payload.settings) {
-          setSettings({
-            reminderTime: payload.settings.reminderTime ?? DEFAULT_SETTINGS.reminderTime,
-            timezone: payload.settings.timezone ?? DEFAULT_SETTINGS.timezone,
-            enabled:
-              typeof payload.settings.enabled === "boolean"
-                ? payload.settings.enabled
-                : DEFAULT_SETTINGS.enabled
-          });
+        if (active) {
+          setSettings(normalizeReminderSettings(payload));
         }
       } catch {
         if (active) {
@@ -249,7 +262,11 @@ export default function SettingsPage() {
       const response = await fetch("/api/settings/reminder", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(settings)
+        body: JSON.stringify({
+          reminderTime: settings.reminderTime,
+          timezone: settings.timezone,
+          enabled: settings.enabled
+        })
       });
 
       if (!response.ok) {

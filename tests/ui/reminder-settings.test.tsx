@@ -9,14 +9,71 @@ vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname
 }));
 
+const DEFAULT_SETTINGS = {
+  reminderTime: "09:00",
+  timezone: "UTC",
+  enabled: true
+};
+
+function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "content-type": "application/json" }
+  });
+}
+
+function setupFetchMock(options?: {
+  sessionStatus?: number;
+  settings?: Record<string, unknown>;
+  settingsStatus?: number;
+  saveStatus?: number;
+  saveBody?: Record<string, unknown>;
+  statusItems?: unknown[];
+  statusStatus?: number;
+}) {
+  const {
+    sessionStatus = 200,
+    settings = DEFAULT_SETTINGS,
+    settingsStatus = 200,
+    saveStatus = 200,
+    saveBody,
+    statusItems = [],
+    statusStatus = 200
+  } = options ?? {};
+
+  return vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+    const url = typeof input === "string" ? input : input.url;
+    const method = (init?.method ?? "GET").toUpperCase();
+
+    if (url === "/api/auth/session") {
+      return jsonResponse({ ok: sessionStatus === 200 }, sessionStatus);
+    }
+
+    if (url === "/api/settings/reminder" && method === "GET") {
+      return jsonResponse({ settings }, settingsStatus);
+    }
+
+    if (url.startsWith("/api/jobs/reminders/status")) {
+      return jsonResponse({ items: statusItems }, statusStatus);
+    }
+
+    if (url === "/api/settings/reminder" && method === "POST") {
+      return jsonResponse(saveBody ?? { ok: saveStatus === 200 }, saveStatus);
+    }
+
+    return jsonResponse({ error: "unexpected request" }, 500);
+  });
+}
+
 describe("reminder settings page", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockPathname = "/settings";
-    window.localStorage.clear();
   });
 
   it("shows login guidance when unauthenticated", async () => {
+    setupFetchMock({ sessionStatus: 401 });
+
     render(<SettingsPage />);
 
     await waitFor(() => {
@@ -29,43 +86,13 @@ describe("reminder settings page", () => {
   });
 
   it("loads and saves reminder settings", async () => {
-    const fetchSpy = vi
-      .spyOn(global, "fetch")
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            settings: {
-              reminderTime: "08:30",
-              timezone: "America/Los_Angeles",
-              enabled: true
-            }
-          }),
-          { status: 200, headers: { "content-type": "application/json" } }
-        )
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            items: []
-          }),
-          {
-            status: 200,
-            headers: { "content-type": "application/json" }
-          }
-        )
-      );
+    const fetchSpy = setupFetchMock({
+      settings: {
+        reminderTime: "08:30",
+        timezone: "America/Los_Angeles",
+        enabled: true
+      }
+    });
 
     render(<SettingsPage />);
 
@@ -83,29 +110,21 @@ describe("reminder settings page", () => {
       expect(screen.getByText("Settings saved.")).toBeInTheDocument();
     });
 
-    expect(fetchSpy).toHaveBeenCalledWith("/api/settings/reminder", expect.any(Object));
+    const postCall = fetchSpy.mock.calls.find(
+      ([url, init]) => url === "/api/settings/reminder" && init?.method === "POST"
+    );
+
+    expect(postCall).toBeDefined();
+    const body = JSON.parse(String(postCall?.[1]?.body ?? "{}"));
+    expect(body).toEqual({
+      reminderTime: "10:15",
+      timezone: "UTC",
+      enabled: false
+    });
   });
 
   it("validates time and shows clear error", async () => {
-    vi.spyOn(global, "fetch")
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ settings: {} }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ items: [] }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      );
+    const fetchSpy = setupFetchMock();
 
     render(<SettingsPage />);
 
@@ -119,34 +138,15 @@ describe("reminder settings page", () => {
     await waitFor(() => {
       expect(screen.getByText("Reminder time must be in HH:MM format.")).toBeInTheDocument();
     });
+
+    const hasPost = fetchSpy.mock.calls.some(
+      ([url, init]) => url === "/api/settings/reminder" && init?.method === "POST"
+    );
+    expect(hasPost).toBe(false);
   });
 
   it("shows generic save error without internal details", async () => {
-    vi.spyOn(global, "fetch")
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ settings: DEFAULT_SETTINGS }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ items: [] }), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: { message: "db timeout stack trace" } }), {
-          status: 500,
-          headers: { "content-type": "application/json" }
-        })
-      );
+    setupFetchMock({ saveStatus: 500, saveBody: { error: { message: "db timeout stack trace" } } });
 
     render(<SettingsPage />);
 
@@ -162,9 +162,3 @@ describe("reminder settings page", () => {
     expect(screen.queryByText(/stack trace/i)).not.toBeInTheDocument();
   });
 });
-
-const DEFAULT_SETTINGS = {
-  reminderTime: "09:00",
-  timezone: "UTC",
-  enabled: true
-};
