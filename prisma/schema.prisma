@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String            @id @default(cuid())
+  email           String            @unique
+  name            String?
+  timezone        String            @default("UTC")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  dailyCheckins   DailyCheckin[]
+  driftScores     DriftScore[]
+  alerts          Alert[]
+  notifications   NotificationLog[]
+  preference      UserPreference?
+}
+
+model DailyCheckin {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime
+  energy      Int
+  stress      Int
+  social      Int
+  keyContact  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model DriftScore {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime
+  driftIndex  Float
+  reasonsJson Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime
+  level       String
+  message     String
+  reason      String
+  action      String
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model NotificationLog {
+  id          String   @id @default(cuid())
+  userId      String
+  channel     String
+  template    String
+  status      String
+  payloadJson Json
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model UserPreference {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  alertThreshold      Float    @default(0.65)
+  reminderHourLocal   Int      @default(20)
+  notificationsEnabled Boolean @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

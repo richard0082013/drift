@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+.next/
+
+# Test artifacts
+test-results/
+
+# Local runtime database
+prisma/dev.db
+
+# Environment files
+.env
