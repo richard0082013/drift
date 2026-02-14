@@ -13,6 +13,10 @@ test("authenticated flow: login -> checkin -> trends -> alerts", async ({ page }
     await page.getByRole("link", { name: "Go to login" }).click();
     await expect(page).toHaveURL(/\/login\?next=%2Fcheckin/);
 
+    await page.getByLabel("Email").fill("invalid-email");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByText("Please enter a valid email.")).toBeVisible();
+
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Name").fill("QA Week6 User");
     await page.getByRole("button", { name: "Sign in" }).click();
