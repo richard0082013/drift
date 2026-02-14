@@ -1,6 +1,27 @@
 import { test, expect } from "@playwright/test";
 
 test("mvp flow: checkin -> trends -> alerts", async ({ page }) => {
+  let authenticated = false;
+
+  await page.route("**/api/auth/session", async (route) => {
+    await route.fulfill({
+      status: authenticated ? 200 : 401,
+      contentType: "application/json",
+      body: authenticated
+        ? JSON.stringify({ session: { userId: "mvp-user" } })
+        : JSON.stringify({ error: { code: "UNAUTHORIZED", message: "Authentication required." } })
+    });
+  });
+
+  await page.route("**/api/auth/login", async (route) => {
+    authenticated = true;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true })
+    });
+  });
+
   await page.route("**/api/checkins", async (route) => {
     await route.fulfill({
       status: 201,
