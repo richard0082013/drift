@@ -21,6 +21,11 @@
 - `GET /api/alerts`
 - `GET /api/export`（CSV）
 
+4. Week2 新增账号删除能力：
+- `POST /api/account/delete`
+- `DELETE /api/account/delete`
+- 删除策略在当前版本明确为 `hard delete`
+
 ## 3. 通用错误码
 
 ### 401 UNAUTHORIZED
@@ -174,8 +179,41 @@
 date,energy,stress,social,key_contact,drift_index,drift_reasons
 ```
 
+#### 字段说明（导出一致性）
+- `date`: `YYYY-MM-DD`
+- `energy|stress|social`: 1-5 整数
+- `key_contact`: 可能为空字符串
+- `drift_index`: 当日无漂移记录时为空字符串
+- `drift_reasons`: 多个原因使用 `" | "` 连接；无漂移记录时为空字符串
+
 #### Errors
 - `401 UNAUTHORIZED`
+
+### 4.6 POST|DELETE /api/account/delete
+
+#### Auth
+- 需要登录会话（Bearer 或 `drift_session_user` Cookie）
+
+#### Success 200
+```json
+{
+  "deleted": true,
+  "strategy": "hard"
+}
+```
+
+#### Errors
+- `401 UNAUTHORIZED`
+- `404 ACCOUNT_NOT_FOUND`
+```json
+{
+  "error": {
+    "code": "ACCOUNT_NOT_FOUND",
+    "message": "Account does not exist."
+  }
+}
+```
+- `500 INTERNAL_ERROR`
 
 ## 5. 兼容性说明
 - `v1` 中 `GET /api/trends?window=...` 与 `series/summary` 结构不再作为 Week2 前后端联调口径。
