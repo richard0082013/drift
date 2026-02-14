@@ -6,12 +6,15 @@ import { FormEvent, useEffect, useState } from "react";
 import { buildLoginHref, isLoggedIn } from "@/lib/auth/client-auth";
 
 export default function AccountPage() {
+  const DELETE_COUNTDOWN_SECONDS = 5;
   const pathname = usePathname();
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmArmed, setConfirmArmed] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -35,7 +38,26 @@ export default function AccountPage() {
     };
   }, []);
 
-  const canDelete = confirmText === "DELETE";
+  useEffect(() => {
+    if (!confirmArmed || countdown <= 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCountdown((current) => current - 1);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [confirmArmed, countdown]);
+
+  const canDelete = confirmText === "DELETE" && confirmArmed && countdown === 0;
+
+  function onArmDelete() {
+    setError(null);
+    setSuccess(null);
+    setConfirmArmed(true);
+    setCountdown(DELETE_COUNTDOWN_SECONDS);
+  }
 
   async function onExport() {
     setError(null);
@@ -72,13 +94,21 @@ export default function AccountPage() {
       const response = await fetch("/api/account/delete", { method: "POST" });
       if (!response.ok) {
         setError("Unable to delete account right now.");
+        setSuccess(
+          "Deletion failed. You can retry after reviewing your connection and confirmation details."
+        );
         return;
       }
 
       setSuccess("Account deletion request submitted.");
       setConfirmText("");
+      setConfirmArmed(false);
+      setCountdown(0);
     } catch {
       setError("Unable to delete account right now.");
+      setSuccess(
+        "Deletion failed. You can retry after reviewing your connection and confirmation details."
+      );
     } finally {
       setDeleting(false);
     }
@@ -113,6 +143,14 @@ export default function AccountPage() {
       <section>
         <h2>Delete Account</h2>
         <p>Danger zone. This action cannot be undone.</p>
+        {!confirmArmed ? (
+          <button type="button" onClick={onArmDelete}>
+            Start delete confirmation
+          </button>
+        ) : null}
+        {confirmArmed && countdown > 0 ? (
+          <p>Delete confirmation unlocks in {countdown}s.</p>
+        ) : null}
         <form onSubmit={onDelete}>
           <label>
             Type DELETE to confirm
