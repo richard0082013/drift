@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createSessionToken } from "@/lib/auth/session";
 
 const { checkinFindManyMock, driftFindManyMock } = vi.hoisted(() => ({
   checkinFindManyMock: vi.fn(),
@@ -39,7 +40,7 @@ describe("GET /api/export", () => {
 
   it("exports only current user data as parseable csv", async () => {
     const request = new Request("http://localhost/api/export", {
-      headers: { authorization: "Bearer drift-user:u1" }
+      headers: { cookie: `drift_session=${createSessionToken("u1")}` }
     });
 
     const response = await GET(request);
@@ -80,7 +81,7 @@ describe("GET /api/export", () => {
     driftFindManyMock.mockResolvedValue([]);
 
     const request = new Request("http://localhost/api/export", {
-      headers: { authorization: "Bearer drift-user:u1" }
+      headers: { cookie: `drift_session=${createSessionToken("u1")}` }
     });
 
     const response = await GET(request);

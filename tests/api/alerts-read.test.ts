@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createSessionToken } from "@/lib/auth/session";
 
 const { findManyMock } = vi.hoisted(() => ({
   findManyMock: vi.fn()
@@ -30,7 +31,7 @@ describe("GET /api/alerts", () => {
     ]);
 
     const request = new Request("http://localhost/api/alerts", {
-      headers: { authorization: "Bearer drift-user:u1" }
+      headers: { cookie: `drift_session=${createSessionToken("u1")}` }
     });
 
     const response = await GET(request);
