@@ -35,6 +35,10 @@ function parseReminderHour(reminderTime: string): number | null {
     return null;
   }
 
+  if (minutes !== 0) {
+    return null;
+  }
+
   return hour;
 }
 
@@ -116,7 +120,7 @@ export async function POST(request: Request) {
 
   const reminderHour = parseReminderHour(candidate.reminderTime);
   if (reminderHour === null) {
-    return validationError("reminderTime must be in HH:MM format.");
+    return validationError("reminderTime must be in HH:00 format.");
   }
 
   if (typeof candidate.timezone !== "string" || !candidate.timezone.trim()) {

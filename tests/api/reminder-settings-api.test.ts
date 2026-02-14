@@ -63,7 +63,7 @@ describe("/api/settings/reminder", () => {
     });
   });
 
-  it("validates payload and rejects invalid timezone", async () => {
+  it("validates payload and rejects non-hour reminder time", async () => {
     const response = await POST(
       new Request("http://localhost/api/settings/reminder", {
         method: "POST",
@@ -73,7 +73,7 @@ describe("/api/settings/reminder", () => {
         },
         body: JSON.stringify({
           reminderTime: "10:15",
-          timezone: "Mars/Base",
+          timezone: "UTC",
           enabled: true
         })
       })
@@ -98,7 +98,7 @@ describe("/api/settings/reminder", () => {
           "content-type": "application/json"
         },
         body: JSON.stringify({
-          reminderTime: "10:15",
+          reminderTime: "10:00",
           timezone: "UTC",
           enabled: true
         })
