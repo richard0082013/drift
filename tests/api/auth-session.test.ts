@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { userUpsertMock, checkinCreateMock, validateCheckinInputMock } = vi.hoisted(() => ({
+const { userUpsertMock, checkinCreateMock, validateCheckinInputMock, notificationLogCreateMock } =
+  vi.hoisted(() => ({
   userUpsertMock: vi.fn(),
   checkinCreateMock: vi.fn(),
-  validateCheckinInputMock: vi.fn()
-}));
+  validateCheckinInputMock: vi.fn(),
+  notificationLogCreateMock: vi.fn()
+  }));
 
 vi.mock("@/lib/db", () => ({
   db: {
@@ -13,6 +15,9 @@ vi.mock("@/lib/db", () => ({
     },
     dailyCheckin: {
       create: checkinCreateMock
+    },
+    notificationLog: {
+      create: notificationLogCreateMock
     }
   }
 }));
@@ -24,6 +29,8 @@ vi.mock("@/lib/validation/checkin", () => ({
 import { POST as loginPost } from "@/app/api/auth/login/route";
 import { POST as logoutPost } from "@/app/api/auth/logout/route";
 import { POST as checkinsPost } from "@/app/api/checkins/route";
+import { GET as sessionGet } from "@/app/api/auth/session/route";
+import { GET as healthGet } from "@/app/api/health/route";
 
 describe("real auth session", () => {
   beforeEach(() => {
@@ -44,6 +51,7 @@ describe("real auth session", () => {
       }
     });
     checkinCreateMock.mockResolvedValue({ id: "c1" });
+    notificationLogCreateMock.mockResolvedValue({ id: "n1" });
   });
 
   it("issues HttpOnly session cookie on login", async () => {
@@ -134,5 +142,52 @@ describe("real auth session", () => {
     expect(clearedCookie).toContain("drift_session=");
     expect(clearedCookie).toContain("Max-Age=0");
     expect(clearedCookie).toContain("HttpOnly");
+  });
+
+  it("reports authenticated session shape and consistent health probe", async () => {
+    const loginRes = await loginPost(
+      new Request("http://localhost/api/auth/login", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          email: "u1@example.com",
+          name: "U1"
+        })
+      })
+    );
+    const setCookie = loginRes.headers.get("set-cookie") ?? "";
+    const cookiePair = setCookie.split(";")[0];
+
+    const sessionRes = await sessionGet(
+      new Request("http://localhost/api/auth/session", {
+        headers: { cookie: cookiePair }
+      })
+    );
+    const sessionBody = await sessionRes.json();
+    expect(sessionRes.status).toBe(200);
+    expect(sessionBody).toEqual({
+      authenticated: true,
+      session: { userId: "u1" }
+    });
+
+    const healthAuthedRes = await healthGet(
+      new Request("http://localhost/api/health", {
+        headers: { cookie: cookiePair }
+      })
+    );
+    const healthAuthedBody = await healthAuthedRes.json();
+    expect(healthAuthedRes.status).toBe(200);
+    expect(healthAuthedBody.status).toBe("ok");
+    expect(healthAuthedBody.authenticated).toBe(true);
+    expect(healthAuthedBody.session.userId).toBe("u1");
+
+    const healthAnonRes = await healthGet(new Request("http://localhost/api/health"));
+    const healthAnonBody = await healthAnonRes.json();
+    expect(healthAnonRes.status).toBe(200);
+    expect(healthAnonBody.status).toBe("ok");
+    expect(healthAnonBody.authenticated).toBe(false);
+    expect(healthAnonBody.session.userId).toBeNull();
   });
 });

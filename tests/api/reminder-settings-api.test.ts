@@ -65,6 +65,30 @@ describe("/api/settings/reminder", () => {
     });
   });
 
+  it("falls back to safe defaults when stored values are out of contract", async () => {
+    userFindUniqueMock.mockResolvedValue({ timezone: "Invalid/Zone" });
+    preferenceFindUniqueMock.mockResolvedValue({
+      reminderHourLocal: 99,
+      notificationsEnabled: true
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/settings/reminder", {
+        headers: { cookie: `drift_session=${createSessionToken("u1")}` }
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.settings).toEqual({
+      reminderHourLocal: 20,
+      notificationsEnabled: true,
+      reminderTime: "20:00",
+      timezone: "UTC",
+      enabled: true
+    });
+  });
+
   it("validates payload and rejects non-hour reminder time", async () => {
     const response = await POST(
       new Request("http://localhost/api/settings/reminder", {
@@ -185,5 +209,25 @@ describe("/api/settings/reminder", () => {
         notificationsEnabled: false
       }
     });
+  });
+
+  it("rejects reminderHourLocal out of range", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/settings/reminder", {
+        method: "POST",
+        headers: {
+          cookie: `drift_session=${createSessionToken("u1")}`,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          reminderHourLocal: 24,
+          notificationsEnabled: true
+        })
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
   });
 });

@@ -3,6 +3,10 @@ import { db } from "@/lib/db";
 import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
 import { buildWeeklyInsights } from "@/lib/insights/weekly";
 
+function isFiniteNumberOrNull(value: unknown): value is number | null {
+  return value === null || (typeof value === "number" && Number.isFinite(value));
+}
+
 function parseDays(url: string): number | null {
   const { searchParams } = new URL(url);
   const raw = searchParams.get("days");
@@ -28,6 +32,79 @@ function getWindow(days: number, now: Date) {
   endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
 
   return { start, end, endExclusive };
+}
+
+function isWeeklyInsightsContract(value: unknown, expectedDays: number): boolean {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as {
+    weekStart?: unknown;
+    weekEnd?: unknown;
+    days?: unknown;
+    summary?: unknown;
+    highlights?: unknown;
+    suggestions?: unknown;
+  };
+
+  if (
+    typeof candidate.weekStart !== "string" ||
+    typeof candidate.weekEnd !== "string" ||
+    candidate.days !== expectedDays ||
+    !candidate.summary ||
+    typeof candidate.summary !== "object"
+  ) {
+    return false;
+  }
+
+  const summary = candidate.summary as {
+    checkinCount?: unknown;
+    alertCount?: unknown;
+    averages?: unknown;
+    driftLevel?: unknown;
+    hasEnoughData?: unknown;
+  };
+
+  if (
+    typeof summary.checkinCount !== "number" ||
+    typeof summary.alertCount !== "number" ||
+    !summary.averages ||
+    typeof summary.averages !== "object" ||
+    (summary.driftLevel !== "low" &&
+      summary.driftLevel !== "moderate" &&
+      summary.driftLevel !== "high") ||
+    typeof summary.hasEnoughData !== "boolean"
+  ) {
+    return false;
+  }
+
+  const averages = summary.averages as {
+    energy?: unknown;
+    stress?: unknown;
+    social?: unknown;
+    driftIndex?: unknown;
+  };
+
+  if (
+    !isFiniteNumberOrNull(averages.energy) ||
+    !isFiniteNumberOrNull(averages.stress) ||
+    !isFiniteNumberOrNull(averages.social) ||
+    !isFiniteNumberOrNull(averages.driftIndex)
+  ) {
+    return false;
+  }
+
+  if (
+    !Array.isArray(candidate.highlights) ||
+    !candidate.highlights.every((item) => typeof item === "string") ||
+    !Array.isArray(candidate.suggestions) ||
+    !candidate.suggestions.every((item) => typeof item === "string")
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 export async function GET(request: Request) {
@@ -100,14 +177,26 @@ export async function GET(request: Request) {
     })
   ]);
 
-  return NextResponse.json(
-    buildWeeklyInsights({
-      checkins,
-      driftScores,
-      alerts,
-      start: window.start,
-      end: window.end,
-      days
-    })
-  );
+  const insights = buildWeeklyInsights({
+    checkins,
+    driftScores,
+    alerts,
+    start: window.start,
+    end: window.end,
+    days
+  });
+
+  if (!isWeeklyInsightsContract(insights, days)) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Invalid weekly insights contract."
+        }
+      },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json(insights);
 }

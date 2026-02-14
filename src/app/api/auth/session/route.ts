@@ -7,5 +7,11 @@ export async function GET(request: Request) {
     return unauthorizedResponse();
   }
 
-  return NextResponse.json({ session: { userId } }, { status: 200 });
+  return NextResponse.json(
+    {
+      authenticated: true,
+      session: { userId }
+    },
+    { status: 200 }
+  );
 }

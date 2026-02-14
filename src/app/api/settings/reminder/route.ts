@@ -20,6 +20,10 @@ const DEFAULT_SETTINGS: ReminderSettings = {
 
 const TIME_PATTERN = /^(\d{2}):(\d{2})$/;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function toReminderTime(hour: number) {
   return `${String(hour).padStart(2, "0")}:00`;
 }
@@ -68,12 +72,19 @@ function validationError(message: string) {
 }
 
 function toReminderSettings(reminderHourLocal: number, timezone: string, notificationsEnabled: boolean) {
+  const safeHour =
+    Number.isInteger(reminderHourLocal) && reminderHourLocal >= 0 && reminderHourLocal <= 23
+      ? reminderHourLocal
+      : DEFAULT_SETTINGS.reminderHourLocal;
+  const safeTimezone = isValidTimezone(timezone) ? timezone : DEFAULT_SETTINGS.timezone;
+  const safeEnabled = typeof notificationsEnabled === "boolean" ? notificationsEnabled : true;
+
   return {
-    reminderHourLocal,
-    notificationsEnabled,
-    reminderTime: toReminderTime(reminderHourLocal),
-    timezone,
-    enabled: notificationsEnabled
+    reminderHourLocal: safeHour,
+    notificationsEnabled: safeEnabled,
+    reminderTime: toReminderTime(safeHour),
+    timezone: safeTimezone,
+    enabled: safeEnabled
   };
 }
 
@@ -121,7 +132,7 @@ export async function POST(request: Request) {
     return validationError("Invalid JSON payload.");
   }
 
-  if (!payload || typeof payload !== "object") {
+  if (!isRecord(payload)) {
     return validationError("Invalid request body.");
   }
 

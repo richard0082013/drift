@@ -104,4 +104,24 @@ describe("POST /api/auth/login", () => {
     const cookie = response.headers.get("set-cookie") ?? "";
     expect(cookie).toContain("drift_session=");
   });
+
+  it("does not block login success when metric and audit writes both fail", async () => {
+    notificationLogCreateMock.mockRejectedValue(new Error("db unavailable"));
+
+    const response = await loginPost(
+      new Request("http://localhost/api/auth/login", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-forwarded-for": "7.7.7.7"
+        },
+        body: JSON.stringify({ email: "u1@example.com" })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.user.email).toBe("u1@example.com");
+    expect(notificationLogCreateMock).toHaveBeenCalledTimes(2);
+  });
 });

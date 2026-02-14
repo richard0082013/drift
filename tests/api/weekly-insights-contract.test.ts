@@ -44,6 +44,18 @@ describe("weekly insights api contract", () => {
     expect(body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("rejects days beyond supported boundary", async () => {
+    const response = await GET(
+      new Request("http://localhost/api/insights/weekly?days=15", {
+        headers: { cookie: `drift_session=${createSessionToken("u1")}` }
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+
   it("returns fixed contract fields for FE integration", async () => {
     const response = await GET(
       new Request("http://localhost/api/insights/weekly?days=7", {
@@ -75,5 +87,19 @@ describe("weekly insights api contract", () => {
     expect(body.highlights.length).toBeGreaterThanOrEqual(1);
     expect(body.suggestions.length).toBeGreaterThanOrEqual(2);
     expect(body.suggestions.length).toBeLessThanOrEqual(3);
+  });
+
+  it("supports upper valid boundary days=14", async () => {
+    const response = await GET(
+      new Request("http://localhost/api/insights/weekly?days=14", {
+        headers: { cookie: `drift_session=${createSessionToken("u1")}` }
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.days).toBe(14);
+    expect(body.weekStart).toBe("2026-02-01");
+    expect(body.weekEnd).toBe("2026-02-14");
   });
 });
