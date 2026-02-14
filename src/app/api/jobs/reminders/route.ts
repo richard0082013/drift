@@ -8,6 +8,7 @@ import {
   REMINDER_TEMPLATE,
   type ReminderPreference
 } from "@/lib/notifications/reminder";
+import { sendReminder } from "@/lib/notifications/provider";
 
 export async function POST() {
   const now = new Date();
@@ -37,6 +38,7 @@ export async function POST() {
   const dueUsers = candidates.filter((item) => isDueInCurrentUtcWindow(now, item));
 
   let sentCount = 0;
+  let failedCount = 0;
   let skippedCount = 0;
 
   for (const due of dueUsers) {
@@ -45,7 +47,7 @@ export async function POST() {
         userId: due.userId,
         channel: REMINDER_CHANNEL,
         template: REMINDER_TEMPLATE,
-        sentAt: {
+        createdAt: {
           gte: window.start,
           lt: window.end
         }
@@ -58,22 +60,53 @@ export async function POST() {
     }
 
     const localDate = getLocalDateKey(now, due.timezone) ?? "unknown";
-    await db.notificationLog.create({
-      data: {
+    try {
+      const dispatch = await sendReminder({
         userId: due.userId,
-        channel: REMINDER_CHANNEL,
-        template: REMINDER_TEMPLATE,
-        status: "sent",
-        payloadJson: {
-          type: "reminder",
-          localDate,
-          timezone: due.timezone,
-          reminderHourLocal: due.reminderHourLocal
-        },
-        sentAt: now
-      }
-    });
-    sentCount += 1;
+        timezone: due.timezone,
+        localDate,
+        reminderHourLocal: due.reminderHourLocal
+      });
+
+      await db.notificationLog.create({
+        data: {
+          userId: due.userId,
+          channel: REMINDER_CHANNEL,
+          template: REMINDER_TEMPLATE,
+          status: "sent",
+          payloadJson: {
+            type: "reminder",
+            provider: dispatch.provider,
+            delivered: dispatch.delivered,
+            messageId: dispatch.messageId ?? null,
+            localDate,
+            timezone: due.timezone,
+            reminderHourLocal: due.reminderHourLocal
+          },
+          sentAt: now
+        }
+      });
+      sentCount += 1;
+    } catch (error) {
+      await db.notificationLog.create({
+        data: {
+          userId: due.userId,
+          channel: REMINDER_CHANNEL,
+          template: REMINDER_TEMPLATE,
+          status: "failed",
+          payloadJson: {
+            type: "reminder",
+            provider: "unknown",
+            localDate,
+            timezone: due.timezone,
+            reminderHourLocal: due.reminderHourLocal,
+            error: error instanceof Error ? error.message : "Unknown error"
+          },
+          sentAt: null
+        }
+      });
+      failedCount += 1;
+    }
   }
 
   return NextResponse.json({
@@ -82,6 +115,7 @@ export async function POST() {
     candidateCount: candidates.length,
     dueCount: dueUsers.length,
     sentCount,
+    failedCount,
     skippedCount
   });
 }
