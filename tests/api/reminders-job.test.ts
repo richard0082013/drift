@@ -58,7 +58,8 @@ describe("POST /api/jobs/reminders", () => {
     expect(body.candidateCount).toBe(3);
     expect(body.dueCount).toBe(2);
     expect(body.sentCount).toBe(2);
-    expect(logCreateMock).toHaveBeenCalledTimes(2);
+    expect(body.failedCount).toBe(0);
+    expect(logCreateMock).toHaveBeenCalledTimes(4);
   });
 
   it("records send log with reminder payload fields", async () => {
