@@ -76,8 +76,23 @@ export default function AlertsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setAuthenticated(isLoggedIn());
-    setAuthChecked(true);
+    let active = true;
+
+    async function resolveSession() {
+      const loggedIn = await isLoggedIn();
+      if (!active) {
+        return;
+      }
+
+      setAuthenticated(loggedIn);
+      setAuthChecked(true);
+    }
+
+    resolveSession();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {

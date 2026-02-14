@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { markLoggedIn, sanitizeNextPath } from "@/lib/auth/client-auth";
+import { loginWithSession, sanitizeNextPath } from "@/lib/auth/client-auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,14 +13,15 @@ export default function LoginPage() {
     [searchParams]
   );
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     setError(null);
-    try {
-      markLoggedIn("demo-user");
+    const ok = await loginWithSession("demo-user");
+    if (ok) {
       router.push(nextPath);
-    } catch {
-      setError("Unable to sign in right now.");
+      return;
     }
+
+    setError("Unable to sign in right now.");
   };
 
   return (

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createSessionToken } from "@/lib/auth/session";
 
 const { findManyMock, driftCreateMock, prefFindMock, alertCreateMock } = vi.hoisted(() => ({
   findManyMock: vi.fn(),
@@ -38,7 +39,7 @@ describe("POST /api/alerts/evaluate", () => {
     const request = new Request("http://localhost/api/alerts/evaluate", {
       method: "POST",
       headers: {
-        authorization: "Bearer drift-user:u1",
+        cookie: `drift_session=${createSessionToken("u1")}`,
         "content-type": "application/json"
       },
       body: JSON.stringify({ date: "2026-02-15" })
@@ -65,7 +66,7 @@ describe("POST /api/alerts/evaluate", () => {
     const request = new Request("http://localhost/api/alerts/evaluate", {
       method: "POST",
       headers: {
-        authorization: "Bearer drift-user:u1",
+        cookie: `drift_session=${createSessionToken("u1")}`,
         "content-type": "application/json"
       },
       body: JSON.stringify({ date: "2026-02-15" })
@@ -83,7 +84,7 @@ describe("POST /api/alerts/evaluate", () => {
     const request = new Request("http://localhost/api/alerts/evaluate", {
       method: "POST",
       headers: {
-        authorization: "Bearer drift-user:u1",
+        cookie: `drift_session=${createSessionToken("u1")}`,
         "content-type": "application/json"
       },
       body: JSON.stringify({ date: "2026-02-15" })

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
+import { writeAuditLog } from "@/lib/audit/log";
+import { checkRateLimit, getRateLimitConfig } from "@/lib/security/rate-limit";
 
 type CsvRow = {
   date: string;
@@ -41,7 +43,34 @@ function formatCsv(rows: CsvRow[]) {
 export async function GET(request: Request) {
   const userId = getSessionUserId(request);
   if (!userId) {
+    await writeAuditLog({
+      action: "export.csv",
+      actorId: "anon",
+      status: "failed",
+      meta: { reason: "unauthorized" }
+    });
     return unauthorizedResponse();
+  }
+
+  const config = getRateLimitConfig("RATE_LIMIT_MAX_EXPORT");
+  const decision = checkRateLimit(`export.csv:${userId}`, config.max, config.windowMs);
+  if (!decision.allowed) {
+    await writeAuditLog({
+      action: "export.csv",
+      actorId: userId,
+      status: "rate_limited",
+      target: userId,
+      meta: { retryAfterSeconds: decision.retryAfterSeconds }
+    });
+    return NextResponse.json(
+      {
+        error: {
+          code: "RATE_LIMITED",
+          message: "Too many requests. Please try again later."
+        }
+      },
+      { status: 429, headers: { "retry-after": String(decision.retryAfterSeconds) } }
+    );
   }
 
   const [checkins, driftScores] = await Promise.all([
@@ -93,6 +122,13 @@ export async function GET(request: Request) {
   });
 
   const csv = formatCsv(rows);
+  await writeAuditLog({
+    action: "export.csv",
+    actorId: userId,
+    status: "success",
+    target: userId,
+    meta: { rowCount: rows.length }
+  });
   return new NextResponse(csv, {
     status: 200,
     headers: {

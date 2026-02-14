@@ -4,6 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { buildLoginHref, isLoggedIn } from "@/lib/auth/client-auth";
+import {
+  ReminderStatusList,
+  type ReminderDeliveryStatus,
+  type ReminderStatusItem
+} from "@/components/reminder-status-list";
 
 type ReminderSettings = {
   reminderTime: string;
@@ -16,6 +21,57 @@ const DEFAULT_SETTINGS: ReminderSettings = {
   timezone: "UTC",
   enabled: true
 };
+
+function normalizeStatus(value: unknown): ReminderDeliveryStatus | null {
+  if (value === "sent" || value === "failed" || value === "pending") {
+    return value;
+  }
+
+  return null;
+}
+
+function normalizeReminderStatusPayload(payload: unknown): ReminderStatusItem[] {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const source = payload as { items?: unknown; data?: unknown; statuses?: unknown };
+  const list = Array.isArray(source.items)
+    ? source.items
+    : Array.isArray(source.statuses)
+      ? source.statuses
+      : Array.isArray(source.data)
+        ? source.data
+        : [];
+
+  return list
+    .map((item, index) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const candidate = item as {
+        id?: unknown;
+        status?: unknown;
+        sentAt?: unknown;
+        channel?: unknown;
+      };
+
+      const status = normalizeStatus(candidate.status);
+      if (!status) {
+        return null;
+      }
+
+      const id = typeof candidate.id === "string" && candidate.id ? candidate.id : `status-${index}`;
+      const sentAt =
+        typeof candidate.sentAt === "string" && candidate.sentAt ? candidate.sentAt : "unknown";
+      const channel =
+        typeof candidate.channel === "string" && candidate.channel ? candidate.channel : "in_app";
+
+      return { id, status, sentAt, channel };
+    })
+    .filter((item): item is ReminderStatusItem => item !== null);
+}
 
 function isValidTime(value: string): boolean {
   const match = /^(\d{2}):(\d{2})$/.exec(value);
@@ -37,10 +93,28 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [statusItems, setStatusItems] = useState<ReminderStatusItem[]>([]);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   useEffect(() => {
-    setAuthenticated(isLoggedIn());
-    setAuthChecked(true);
+    let active = true;
+
+    async function resolveSession() {
+      const loggedIn = await isLoggedIn();
+      if (!active) {
+        return;
+      }
+
+      setAuthenticated(loggedIn);
+      setAuthChecked(true);
+    }
+
+    resolveSession();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -95,6 +169,56 @@ export default function SettingsPage() {
     }
 
     loadSettings();
+
+    return () => {
+      active = false;
+    };
+  }, [authenticated]);
+
+  useEffect(() => {
+    if (!authenticated) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadReminderStatuses() {
+      setStatusLoading(true);
+      setStatusError(null);
+
+      try {
+        const response = await fetch("/api/jobs/reminders/status?limit=5", {
+          method: "GET",
+          headers: { accept: "application/json" },
+          cache: "no-store"
+        });
+
+        if (!response.ok) {
+          if (active) {
+            setStatusItems([]);
+            setStatusError("Reminder status is unavailable.");
+          }
+          return;
+        }
+
+        const payload = (await response.json()) as unknown;
+        const normalized = normalizeReminderStatusPayload(payload);
+        if (active) {
+          setStatusItems(normalized);
+        }
+      } catch {
+        if (active) {
+          setStatusItems([]);
+          setStatusError("Reminder status is unavailable.");
+        }
+      } finally {
+        if (active) {
+          setStatusLoading(false);
+        }
+      }
+    }
+
+    loadReminderStatuses();
 
     return () => {
       active = false;
@@ -189,6 +313,7 @@ export default function SettingsPage() {
           {saving ? "Saving..." : "Save Settings"}
         </button>
       </form>
+      <ReminderStatusList items={statusItems} loading={statusLoading} error={statusError} />
       {error ? <p role="alert">{error}</p> : null}
       {success ? <p>{success}</p> : null}
     </main>

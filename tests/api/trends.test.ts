@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createSessionToken } from "@/lib/auth/session";
 
 const { findManyMock } = vi.hoisted(() => ({
   findManyMock: vi.fn()
@@ -26,7 +27,7 @@ describe("GET /api/trends", () => {
     ]);
 
     const request = new Request("http://localhost/api/trends?days=7", {
-      headers: { authorization: "Bearer drift-user:u1" }
+      headers: { cookie: `drift_session=${createSessionToken("u1")}` }
     });
 
     const response = await GET(request);
@@ -39,7 +40,7 @@ describe("GET /api/trends", () => {
 
   it("rejects unsupported days value", async () => {
     const request = new Request("http://localhost/api/trends?days=14", {
-      headers: { authorization: "Bearer drift-user:u1" }
+      headers: { cookie: `drift_session=${createSessionToken("u1")}` }
     });
 
     const response = await GET(request);

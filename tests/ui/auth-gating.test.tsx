@@ -21,12 +21,18 @@ describe("auth gating", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     routerPush.mockReset();
-    window.localStorage.clear();
     mockPathname = "/checkin";
     mockNext = "/checkin";
   });
 
   it("shows login guidance for unauthenticated checkin page", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: "UNAUTHORIZED" } }), {
+        status: 401,
+        headers: { "content-type": "application/json" }
+      })
+    );
+
     render(<CheckinPage />);
 
     await waitFor(() => {
@@ -40,8 +46,8 @@ describe("auth gating", () => {
 
   it("blocks trends loading when unauthenticated", async () => {
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ data: [] }), {
-        status: 200,
+      new Response(JSON.stringify({ error: { code: "UNAUTHORIZED" } }), {
+        status: 401,
         headers: { "content-type": "application/json" }
       })
     );
@@ -52,11 +58,18 @@ describe("auth gating", () => {
     await waitFor(() => {
       expect(screen.getByText("Please log in to continue.")).toBeInTheDocument();
     });
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledWith("/api/auth/session", expect.any(Object));
+    expect(fetchSpy).not.toHaveBeenCalledWith(expect.stringMatching(/\/api\/trends/), expect.anything());
   });
 
   it("redirects to next page after login", async () => {
     mockNext = "/alerts";
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      })
+    );
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
@@ -64,13 +77,16 @@ describe("auth gating", () => {
     await waitFor(() => {
       expect(routerPush).toHaveBeenCalledWith("/alerts");
     });
-    expect(window.localStorage.getItem("drift_auth_user")).toBe("demo-user");
+    expect(global.fetch).toHaveBeenCalledWith("/api/auth/login", expect.any(Object));
   });
 
   it("shows generic login error without internal details", async () => {
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("quota exploded");
-    });
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: { message: "internal stack trace" } }), {
+        status: 500,
+        headers: { "content-type": "application/json" }
+      })
+    );
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
@@ -78,6 +94,6 @@ describe("auth gating", () => {
     await waitFor(() => {
       expect(screen.getByText("Unable to sign in right now.")).toBeInTheDocument();
     });
-    expect(screen.queryByText(/quota exploded/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/stack trace/i)).not.toBeInTheDocument();
   });
 });

@@ -11,8 +11,23 @@ export default function PrivacyPage() {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    setAuthenticated(isLoggedIn());
-    setAuthChecked(true);
+    let active = true;
+
+    async function resolveSession() {
+      const loggedIn = await isLoggedIn();
+      if (!active) {
+        return;
+      }
+
+      setAuthenticated(loggedIn);
+      setAuthChecked(true);
+    }
+
+    resolveSession();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (!authChecked) {

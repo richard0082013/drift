@@ -1,10 +1,19 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PrivacyPage from "@/app/privacy/page";
 import AccountPage from "@/app/account/page";
 
 let mockPathname = "/privacy";
+
+async function flushCountdown(seconds: number) {
+  for (let i = 0; i < seconds; i += 1) {
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
+  }
+}
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname
@@ -13,12 +22,21 @@ vi.mock("next/navigation", () => ({
 describe("privacy and account actions", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    window.localStorage.clear();
     mockPathname = "/privacy";
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("shows non-medical disclaimer and account entry", async () => {
-    window.localStorage.setItem("drift_auth_user", "u1");
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ session: { userId: "u1" } }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      })
+    );
+
     render(<PrivacyPage />);
 
     await waitFor(() => {
@@ -30,7 +48,100 @@ describe("privacy and account actions", () => {
     );
   });
 
+  it("enforces second confirmation for delete action", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ session: { userId: "u1" } }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      })
+    );
+    render(<AccountPage />);
+
+    const deleteButton = await screen.findByRole("button", { name: "Delete account" });
+    expect(deleteButton).toBeDisabled();
+    vi.useFakeTimers();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start delete confirmation" }));
+    expect(screen.getByText("Delete confirmation unlocks in 5s.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Type DELETE to confirm"), { target: { value: "DELETE" } });
+    expect(deleteButton).toBeDisabled();
+
+    await flushCountdown(5);
+    vi.useRealTimers();
+
+    await waitFor(() => {
+      expect(screen.queryByText(/unlocks in/i)).not.toBeInTheDocument();
+    });
+    expect(deleteButton).toBeEnabled();
+  });
+
+  it("shows generic error when export fails", async () => {
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ session: { userId: "u1" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: { message: "db stack trace" } }), {
+          status: 500,
+          headers: { "content-type": "application/json" }
+        })
+      );
+
+    render(<AccountPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Export my data" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Unable to export data right now.")).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/stack trace/i)).not.toBeInTheDocument();
+  });
+
+  it("shows recovery hint when delete request fails", async () => {
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ session: { userId: "u1" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: { message: "failed" } }), {
+          status: 500,
+          headers: { "content-type": "application/json" }
+        })
+      );
+
+    render(<AccountPage />);
+    await screen.findByRole("button", { name: "Delete account" });
+    vi.useFakeTimers();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start delete confirmation" }));
+    fireEvent.change(screen.getByLabelText("Type DELETE to confirm"), { target: { value: "DELETE" } });
+    await flushCountdown(5);
+    vi.useRealTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Unable to delete account right now.")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Deletion failed. You can retry after reviewing your connection and confirmation details."
+        )
+      ).toBeInTheDocument();
+    });
+  });
+
   it("requires auth and routes to login when unauthenticated", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: "UNAUTHORIZED" } }), {
+        status: 401,
+        headers: { "content-type": "application/json" }
+      })
+    );
     mockPathname = "/account";
     render(<AccountPage />);
 
@@ -41,34 +152,5 @@ describe("privacy and account actions", () => {
       "href",
       "/login?next=%2Faccount"
     );
-  });
-
-  it("enforces second confirmation for delete action", async () => {
-    window.localStorage.setItem("drift_auth_user", "u1");
-    render(<AccountPage />);
-
-    const deleteButton = await screen.findByRole("button", { name: "Delete account" });
-    expect(deleteButton).toBeDisabled();
-
-    fireEvent.change(screen.getByLabelText("Type DELETE to confirm"), { target: { value: "DELETE" } });
-    expect(deleteButton).toBeEnabled();
-  });
-
-  it("shows generic error when export fails", async () => {
-    window.localStorage.setItem("drift_auth_user", "u1");
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ error: { message: "db stack trace" } }), {
-        status: 500,
-        headers: { "content-type": "application/json" }
-      })
-    );
-
-    render(<AccountPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Export my data" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Unable to export data right now.")).toBeInTheDocument();
-    });
-    expect(screen.queryByText(/stack trace/i)).not.toBeInTheDocument();
   });
 });
