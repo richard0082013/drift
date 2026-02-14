@@ -1,11 +1,14 @@
-const AUTH_COOKIE_KEY = "drift_session_user";
-
-export function isLoggedIn(): boolean {
-  if (typeof window === "undefined") {
+export async function isLoggedIn(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/auth/session", {
+      method: "GET",
+      headers: { accept: "application/json" },
+      cache: "no-store"
+    });
+    return response.status === 200;
+  } catch {
     return false;
   }
-
-  return document.cookie.split(";").some((part) => part.trim().startsWith(`${AUTH_COOKIE_KEY}=`));
 }
 
 export async function loginWithSession(userId = "demo-user"): Promise<boolean> {

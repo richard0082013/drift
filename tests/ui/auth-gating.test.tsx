@@ -21,12 +21,18 @@ describe("auth gating", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     routerPush.mockReset();
-    document.cookie = "drift_session_user=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
     mockPathname = "/checkin";
     mockNext = "/checkin";
   });
 
   it("shows login guidance for unauthenticated checkin page", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: "UNAUTHORIZED" } }), {
+        status: 401,
+        headers: { "content-type": "application/json" }
+      })
+    );
+
     render(<CheckinPage />);
 
     await waitFor(() => {
@@ -40,8 +46,8 @@ describe("auth gating", () => {
 
   it("blocks trends loading when unauthenticated", async () => {
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ data: [] }), {
-        status: 200,
+      new Response(JSON.stringify({ error: { code: "UNAUTHORIZED" } }), {
+        status: 401,
         headers: { "content-type": "application/json" }
       })
     );
@@ -52,7 +58,8 @@ describe("auth gating", () => {
     await waitFor(() => {
       expect(screen.getByText("Please log in to continue.")).toBeInTheDocument();
     });
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledWith("/api/auth/session", expect.any(Object));
+    expect(fetchSpy).not.toHaveBeenCalledWith(expect.stringMatching(/\/api\/trends/), expect.anything());
   });
 
   it("redirects to next page after login", async () => {

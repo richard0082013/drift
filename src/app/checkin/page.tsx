@@ -12,8 +12,23 @@ export default function CheckinPage() {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    setAuthenticated(isLoggedIn());
-    setReady(true);
+    let active = true;
+
+    async function resolveSession() {
+      const loggedIn = await isLoggedIn();
+      if (!active) {
+        return;
+      }
+
+      setAuthenticated(loggedIn);
+      setReady(true);
+    }
+
+    resolveSession();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (!ready) {
