@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { calculateDrift } from "@/lib/drift/engine";
 import { generateAlertPayload } from "@/lib/alerts/generate";
+import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
 
 function normalizeDate(input?: string) {
   const base = input ? new Date(input) : new Date();
@@ -9,12 +10,9 @@ function normalizeDate(input?: string) {
 }
 
 export async function POST(request: Request) {
-  const userId = request.headers.get("x-user-id") ?? process.env.DEFAULT_USER_ID;
+  const userId = getSessionUserId(request);
   if (!userId) {
-    return NextResponse.json(
-      { error: { code: "UNAUTHORIZED", message: "Missing user identity." } },
-      { status: 401 }
-    );
+    return unauthorizedResponse();
   }
 
   const body = (await request.json().catch(() => ({}))) as { date?: string };

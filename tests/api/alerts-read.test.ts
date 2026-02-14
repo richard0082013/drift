@@ -30,7 +30,7 @@ describe("GET /api/alerts", () => {
     ]);
 
     const request = new Request("http://localhost/api/alerts", {
-      headers: { "x-user-id": "u1" }
+      headers: { authorization: "Bearer drift-user:u1" }
     });
 
     const response = await GET(request);

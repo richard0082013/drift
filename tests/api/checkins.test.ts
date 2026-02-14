@@ -39,7 +39,7 @@ describe("POST /api/checkins", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-user-id": "u1"
+        authorization: "Bearer drift-user:u1"
       },
       body: JSON.stringify({
         date: "2026-02-14",
@@ -63,7 +63,7 @@ describe("POST /api/checkins", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-user-id": "u1"
+        authorization: "Bearer drift-user:u1"
       },
       body: JSON.stringify({
         date: "2026-02-14",
@@ -90,7 +90,7 @@ describe("POST /api/checkins", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-user-id": "u1"
+        authorization: "Bearer drift-user:u1"
       },
       body: JSON.stringify({
         date: "2026-02-14",

@@ -37,7 +37,10 @@ describe("POST /api/alerts/evaluate", () => {
   it("creates alert when drift index is above threshold", async () => {
     const request = new Request("http://localhost/api/alerts/evaluate", {
       method: "POST",
-      headers: { "x-user-id": "u1", "content-type": "application/json" },
+      headers: {
+        authorization: "Bearer drift-user:u1",
+        "content-type": "application/json"
+      },
       body: JSON.stringify({ date: "2026-02-15" })
     });
 
@@ -61,7 +64,10 @@ describe("POST /api/alerts/evaluate", () => {
 
     const request = new Request("http://localhost/api/alerts/evaluate", {
       method: "POST",
-      headers: { "x-user-id": "u1", "content-type": "application/json" },
+      headers: {
+        authorization: "Bearer drift-user:u1",
+        "content-type": "application/json"
+      },
       body: JSON.stringify({ date: "2026-02-15" })
     });
 
@@ -76,7 +82,10 @@ describe("POST /api/alerts/evaluate", () => {
   it("uses gentle non-medical message", async () => {
     const request = new Request("http://localhost/api/alerts/evaluate", {
       method: "POST",
-      headers: { "x-user-id": "u1", "content-type": "application/json" },
+      headers: {
+        authorization: "Bearer drift-user:u1",
+        "content-type": "application/json"
+      },
       body: JSON.stringify({ date: "2026-02-15" })
     });
 

@@ -1,6 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  buildLoginHref,
+  buildSessionAuthorizationHeader,
+  isLoggedIn
+} from "@/lib/auth/client-auth";
 
 type AlertItem = {
   id: string;
@@ -61,11 +68,23 @@ function normalizeAlertsPayload(payload: unknown): AlertItem[] {
 }
 
 export default function AlertsPage() {
+  const pathname = usePathname();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const [data, setData] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setAuthenticated(isLoggedIn());
+    setAuthChecked(true);
+  }, []);
+
+  useEffect(() => {
+    if (!authenticated) {
+      return;
+    }
+
     let active = true;
 
     async function load() {
@@ -74,7 +93,10 @@ export default function AlertsPage() {
       try {
         const response = await fetch("/api/alerts", {
           method: "GET",
-          headers: { accept: "application/json" },
+          headers: {
+            accept: "application/json",
+            ...buildSessionAuthorizationHeader()
+          },
           cache: "no-store"
         });
         if (!response.ok) {
@@ -107,7 +129,21 @@ export default function AlertsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [authenticated]);
+
+  if (!authChecked) {
+    return <main><p>Checking authentication...</p></main>;
+  }
+
+  if (!authenticated) {
+    return (
+      <main>
+        <h1>Alerts</h1>
+        <p role="alert">Please log in to continue.</p>
+        <Link href={buildLoginHref(pathname ?? "/alerts", "/alerts")}>Go to login</Link>
+      </main>
+    );
+  }
 
   return (
     <main>

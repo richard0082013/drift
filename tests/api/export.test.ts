@@ -39,7 +39,7 @@ describe("GET /api/export", () => {
 
   it("exports only current user data as parseable csv", async () => {
     const request = new Request("http://localhost/api/export", {
-      headers: { "x-user-id": "u1" }
+      headers: { authorization: "Bearer drift-user:u1" }
     });
 
     const response = await GET(request);
@@ -65,5 +65,32 @@ describe("GET /api/export", () => {
     const response = await GET(request);
 
     expect(response.status).toBe(401);
+  });
+
+  it("keeps contract fields consistent when optional values are empty", async () => {
+    checkinFindManyMock.mockResolvedValue([
+      {
+        date: new Date("2026-02-15"),
+        energy: 2,
+        stress: 4,
+        social: 3,
+        keyContact: null
+      }
+    ]);
+    driftFindManyMock.mockResolvedValue([]);
+
+    const request = new Request("http://localhost/api/export", {
+      headers: { authorization: "Bearer drift-user:u1" }
+    });
+
+    const response = await GET(request);
+    const text = await response.text();
+    const [header, dataLine] = text.trim().split("\n");
+
+    expect(response.status).toBe(200);
+    expect(header).toBe(
+      "date,energy,stress,social,key_contact,drift_index,drift_reasons"
+    );
+    expect(dataLine).toBe("2026-02-15,2,4,3,,,");
   });
 });

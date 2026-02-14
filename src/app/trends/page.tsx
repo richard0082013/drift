@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { TrendChart } from "@/components/trend-chart";
+import {
+  buildLoginHref,
+  buildSessionAuthorizationHeader,
+  isLoggedIn
+} from "@/lib/auth/client-auth";
 
 type TrendPoint = {
   date: string;
@@ -88,21 +95,36 @@ function normalizeTrendsPayload(payload: unknown): TrendPoint[] {
 }
 
 export default function TrendsPage() {
+  const pathname = usePathname();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const [period, setPeriod] = useState<7 | 30>(7);
   const [data, setData] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setAuthenticated(isLoggedIn());
+    setAuthChecked(true);
+  }, []);
+
+  useEffect(() => {
+    if (!authenticated) {
+      return;
+    }
+
     let active = true;
 
     async function load() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/trends?window=${period}`, {
+        const response = await fetch(`/api/trends?days=${period}`, {
           method: "GET",
-          headers: { accept: "application/json" },
+          headers: {
+            accept: "application/json",
+            ...buildSessionAuthorizationHeader()
+          },
           cache: "no-store"
         });
 
@@ -136,7 +158,21 @@ export default function TrendsPage() {
     return () => {
       active = false;
     };
-  }, [period]);
+  }, [period, authenticated]);
+
+  if (!authChecked) {
+    return <main><p>Checking authentication...</p></main>;
+  }
+
+  if (!authenticated) {
+    return (
+      <main>
+        <h1>Trends</h1>
+        <p role="alert">Please log in to continue.</p>
+        <Link href={buildLoginHref(pathname ?? "/trends", "/trends")}>Go to login</Link>
+      </main>
+    );
+  }
 
   return (
     <main>

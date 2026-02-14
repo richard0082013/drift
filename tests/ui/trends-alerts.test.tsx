@@ -8,6 +8,7 @@ import { TrendChart } from "@/components/trend-chart";
 describe("trends and alerts UI", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    window.localStorage.setItem("drift_auth_user", "u1");
   });
 
   it("supports 7/30 day switch", async () => {
@@ -32,7 +33,7 @@ describe("trends and alerts UI", () => {
     });
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/\/api\/trends\?window=(7|30)$/),
+      expect.stringMatching(/\/api\/trends\?days=(7|30)$/),
       expect.any(Object)
     );
   });

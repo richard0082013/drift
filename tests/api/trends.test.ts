@@ -26,7 +26,7 @@ describe("GET /api/trends", () => {
     ]);
 
     const request = new Request("http://localhost/api/trends?days=7", {
-      headers: { "x-user-id": "u1" }
+      headers: { authorization: "Bearer drift-user:u1" }
     });
 
     const response = await GET(request);
@@ -39,7 +39,7 @@ describe("GET /api/trends", () => {
 
   it("rejects unsupported days value", async () => {
     const request = new Request("http://localhost/api/trends?days=14", {
-      headers: { "x-user-id": "u1" }
+      headers: { authorization: "Bearer drift-user:u1" }
     });
 
     const response = await GET(request);
