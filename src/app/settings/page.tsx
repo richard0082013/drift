@@ -61,14 +61,17 @@ function normalizeReminderStatusPayload(payload: unknown): ReminderStatusItem[] 
       if (!status) {
         return null;
       }
+      if (typeof candidate.id !== "string" || !candidate.id) {
+        return null;
+      }
+      if (typeof candidate.sentAt !== "string" || !candidate.sentAt) {
+        return null;
+      }
+      if (typeof candidate.channel !== "string" || !candidate.channel) {
+        return null;
+      }
 
-      const id = typeof candidate.id === "string" && candidate.id ? candidate.id : `status-${index}`;
-      const sentAt =
-        typeof candidate.sentAt === "string" && candidate.sentAt ? candidate.sentAt : "unknown";
-      const channel =
-        typeof candidate.channel === "string" && candidate.channel ? candidate.channel : "in_app";
-
-      return { id, status, sentAt, channel };
+      return { id: candidate.id, status, sentAt: candidate.sentAt, channel: candidate.channel };
     })
     .filter((item): item is ReminderStatusItem => item !== null);
 }

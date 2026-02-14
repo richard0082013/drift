@@ -41,6 +41,26 @@ describe("ReminderStatusList", () => {
     expect(screen.getAllByText("Channel: email")).toHaveLength(2);
   });
 
+  it("shows pending status clearly", () => {
+    render(
+      <ReminderStatusList
+        items={[
+          {
+            id: "n3",
+            status: "pending",
+            channel: "in_app",
+            sentAt: "2026-02-20T09:10:00Z"
+          }
+        ]}
+        loading={false}
+        error={null}
+      />
+    );
+
+    expect(screen.getByText("Status: Pending")).toBeInTheDocument();
+    expect(screen.getByText("Channel: in_app")).toBeInTheDocument();
+  });
+
   it("shows generic error", () => {
     render(<ReminderStatusList items={[]} loading={false} error="Reminder status is unavailable." />);
     expect(screen.getByText("Reminder status is unavailable.")).toBeInTheDocument();
