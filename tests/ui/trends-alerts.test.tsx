@@ -33,7 +33,7 @@ describe("trends and alerts UI", () => {
     });
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/\/api\/trends\?window=(7|30)$/),
+      expect.stringMatching(/\/api\/trends\?days=(7|30)$/),
       expect.any(Object)
     );
   });
