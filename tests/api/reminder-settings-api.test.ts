@@ -31,8 +31,12 @@ describe("/api/settings/reminder", () => {
 
   it("returns 401 when session is missing", async () => {
     const response = await GET(new Request("http://localhost/api/settings/reminder"));
+    const body = await response.json();
 
     expect(response.status).toBe(401);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
   });
 
   it("returns current settings for authenticated user", async () => {
@@ -50,15 +54,19 @@ describe("/api/settings/reminder", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
-      settings: {
+    expect(body).toEqual(
+      expect.objectContaining({
+        settings: {
         reminderHourLocal: 8,
         notificationsEnabled: false,
         reminderTime: "08:00",
         timezone: "America/New_York",
         enabled: false
-      }
-    });
+        },
+        requestId: expect.any(String),
+        timestamp: expect.any(String)
+      })
+    );
     expect(userFindUniqueMock).toHaveBeenCalledWith({
       where: { id: "u1" },
       select: { timezone: true }
@@ -87,6 +95,8 @@ describe("/api/settings/reminder", () => {
       timezone: "UTC",
       enabled: true
     });
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
   });
 
   it("validates payload and rejects non-hour reminder time", async () => {
@@ -108,6 +118,8 @@ describe("/api/settings/reminder", () => {
 
     expect(response.status).toBe(400);
     expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
     expect(userUpsertMock).not.toHaveBeenCalled();
     expect(preferenceUpsertMock).not.toHaveBeenCalled();
   });
@@ -134,15 +146,19 @@ describe("/api/settings/reminder", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
-      settings: {
+    expect(body).toEqual(
+      expect.objectContaining({
+        settings: {
         reminderHourLocal: 10,
         notificationsEnabled: true,
         reminderTime: "10:00",
         timezone: "UTC",
         enabled: true
-      }
-    });
+        },
+        requestId: expect.any(String),
+        timestamp: expect.any(String)
+      })
+    );
 
     expect(userUpsertMock).toHaveBeenCalledWith({
       where: { id: "u1" },
@@ -197,6 +213,8 @@ describe("/api/settings/reminder", () => {
       timezone: "Asia/Shanghai",
       enabled: false
     });
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
     expect(preferenceUpsertMock).toHaveBeenCalledWith({
       where: { userId: "u1" },
       update: {
@@ -229,5 +247,7 @@ describe("/api/settings/reminder", () => {
 
     expect(response.status).toBe(400);
     expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
   });
 });

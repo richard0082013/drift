@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
+import { getSessionUserId } from "@/lib/auth/session";
+import { createRequestMeta, errorJson, successJson } from "@/lib/http/response-contract";
 
 type ReminderSettings = {
   reminderHourLocal: number;
@@ -59,16 +59,8 @@ function isValidTimezone(timezone: string) {
   }
 }
 
-function validationError(message: string) {
-  return NextResponse.json(
-    {
-      error: {
-        code: "VALIDATION_ERROR",
-        message
-      }
-    },
-    { status: 400 }
-  );
+function validationError(message: string, request: Request) {
+  return errorJson("VALIDATION_ERROR", message, createRequestMeta(request), 400);
 }
 
 function toReminderSettings(reminderHourLocal: number, timezone: string, notificationsEnabled: boolean) {
@@ -89,9 +81,10 @@ function toReminderSettings(reminderHourLocal: number, timezone: string, notific
 }
 
 export async function GET(request: Request) {
+  const meta = createRequestMeta(request);
   const userId = getSessionUserId(request);
   if (!userId) {
-    return unauthorizedResponse();
+    return errorJson("UNAUTHORIZED", "Authentication required.", meta, 401);
   }
 
   const [user, preference] = await Promise.all([
@@ -113,15 +106,19 @@ export async function GET(request: Request) {
     preference?.notificationsEnabled ?? DEFAULT_SETTINGS.notificationsEnabled;
   const timezone = user?.timezone ?? DEFAULT_SETTINGS.timezone;
 
-  return NextResponse.json({
-    settings: toReminderSettings(reminderHourLocal, timezone, notificationsEnabled)
-  });
+  return successJson(
+    {
+      settings: toReminderSettings(reminderHourLocal, timezone, notificationsEnabled)
+    },
+    meta
+  );
 }
 
 export async function POST(request: Request) {
+  const meta = createRequestMeta(request);
   const userId = getSessionUserId(request);
   if (!userId) {
-    return unauthorizedResponse();
+    return errorJson("UNAUTHORIZED", "Authentication required.", meta, 401);
   }
 
   let payload: unknown;
@@ -129,11 +126,11 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
-    return validationError("Invalid JSON payload.");
+    return validationError("Invalid JSON payload.", request);
   }
 
   if (!isRecord(payload)) {
-    return validationError("Invalid request body.");
+    return validationError("Invalid request body.", request);
   }
 
   const candidate = payload as Partial<ReminderSettings>;
@@ -147,19 +144,19 @@ export async function POST(request: Request) {
     ) {
       reminderHourLocal = candidate.reminderHourLocal;
     } else {
-      return validationError("reminderHourLocal must be an integer between 0 and 23.");
+      return validationError("reminderHourLocal must be an integer between 0 and 23.", request);
     }
   }
 
   if (reminderHourLocal === null && typeof candidate.reminderTime === "string") {
     reminderHourLocal = parseReminderHour(candidate.reminderTime);
     if (reminderHourLocal === null) {
-      return validationError("reminderTime must be in HH:00 format.");
+      return validationError("reminderTime must be in HH:00 format.", request);
     }
   }
 
   if (reminderHourLocal === null) {
-    return validationError("reminderHourLocal or reminderTime is required.");
+    return validationError("reminderHourLocal or reminderTime is required.", request);
   }
 
   let notificationsEnabled: boolean | null = null;
@@ -168,7 +165,7 @@ export async function POST(request: Request) {
   } else if (typeof candidate.enabled === "boolean") {
     notificationsEnabled = candidate.enabled;
   } else {
-    return validationError("notificationsEnabled or enabled must be boolean.");
+    return validationError("notificationsEnabled or enabled must be boolean.", request);
   }
 
   const existingUser = await db.user.findUnique({
@@ -179,12 +176,12 @@ export async function POST(request: Request) {
   let timezone = existingUser?.timezone ?? DEFAULT_SETTINGS.timezone;
   if (typeof candidate.timezone === "string") {
     if (!candidate.timezone.trim()) {
-      return validationError("timezone is required.");
+      return validationError("timezone is required.", request);
     }
 
     const normalizedTimezone = candidate.timezone.trim();
     if (!isValidTimezone(normalizedTimezone)) {
-      return validationError("timezone is invalid.");
+      return validationError("timezone is invalid.", request);
     }
     timezone = normalizedTimezone;
   }
@@ -215,7 +212,10 @@ export async function POST(request: Request) {
     }
   });
 
-  return NextResponse.json({
-    settings: toReminderSettings(reminderHourLocal, timezone, notificationsEnabled)
-  });
+  return successJson(
+    {
+      settings: toReminderSettings(reminderHourLocal, timezone, notificationsEnabled)
+    },
+    meta
+  );
 }

@@ -167,10 +167,14 @@ describe("real auth session", () => {
     );
     const sessionBody = await sessionRes.json();
     expect(sessionRes.status).toBe(200);
-    expect(sessionBody).toEqual({
-      authenticated: true,
-      session: { userId: "u1" }
-    });
+    expect(sessionBody).toEqual(
+      expect.objectContaining({
+        authenticated: true,
+        session: { userId: "u1" },
+        requestId: expect.any(String),
+        timestamp: expect.any(String)
+      })
+    );
 
     const healthAuthedRes = await healthGet(
       new Request("http://localhost/api/health", {
@@ -182,6 +186,8 @@ describe("real auth session", () => {
     expect(healthAuthedBody.status).toBe("ok");
     expect(healthAuthedBody.authenticated).toBe(true);
     expect(healthAuthedBody.session.userId).toBe("u1");
+    expect(typeof healthAuthedBody.requestId).toBe("string");
+    expect(typeof healthAuthedBody.timestamp).toBe("string");
 
     const healthAnonRes = await healthGet(new Request("http://localhost/api/health"));
     const healthAnonBody = await healthAnonRes.json();
@@ -189,5 +195,7 @@ describe("real auth session", () => {
     expect(healthAnonBody.status).toBe("ok");
     expect(healthAnonBody.authenticated).toBe(false);
     expect(healthAnonBody.session.userId).toBeNull();
+    expect(typeof healthAnonBody.requestId).toBe("string");
+    expect(typeof healthAnonBody.timestamp).toBe("string");
   });
 });

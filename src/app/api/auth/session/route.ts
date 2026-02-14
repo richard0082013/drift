@@ -1,17 +1,18 @@
-import { NextResponse } from "next/server";
-import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
+import { getSessionUserId } from "@/lib/auth/session";
+import { createRequestMeta, errorJson, successJson } from "@/lib/http/response-contract";
 
 export async function GET(request: Request) {
+  const meta = createRequestMeta(request);
   const userId = getSessionUserId(request);
   if (!userId) {
-    return unauthorizedResponse();
+    return errorJson("UNAUTHORIZED", "Authentication required.", meta, 401);
   }
 
-  return NextResponse.json(
+  return successJson(
     {
       authenticated: true,
       session: { userId }
     },
-    { status: 200 }
+    meta
   );
 }

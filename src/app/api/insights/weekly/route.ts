@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
+import { getSessionUserId } from "@/lib/auth/session";
 import { buildWeeklyInsights } from "@/lib/insights/weekly";
+import { createRequestMeta, errorJson, successJson } from "@/lib/http/response-contract";
 
 function isFiniteNumberOrNull(value: unknown): value is number | null {
   return value === null || (typeof value === "number" && Number.isFinite(value));
@@ -108,22 +108,15 @@ function isWeeklyInsightsContract(value: unknown, expectedDays: number): boolean
 }
 
 export async function GET(request: Request) {
+  const meta = createRequestMeta(request);
   const userId = getSessionUserId(request);
   if (!userId) {
-    return unauthorizedResponse();
+    return errorJson("UNAUTHORIZED", "Authentication required.", meta, 401);
   }
 
   const days = parseDays(request.url);
   if (days === null) {
-    return NextResponse.json(
-      {
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "days must be an integer between 1 and 14."
-        }
-      },
-      { status: 400 }
-    );
+    return errorJson("VALIDATION_ERROR", "days must be an integer between 1 and 14.", meta, 400);
   }
 
   const now = new Date();
@@ -187,16 +180,8 @@ export async function GET(request: Request) {
   });
 
   if (!isWeeklyInsightsContract(insights, days)) {
-    return NextResponse.json(
-      {
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "Invalid weekly insights contract."
-        }
-      },
-      { status: 500 }
-    );
+    return errorJson("INTERNAL_ERROR", "Invalid weekly insights contract.", meta, 500);
   }
 
-  return NextResponse.json(insights);
+  return successJson(insights as Record<string, unknown>, meta);
 }
