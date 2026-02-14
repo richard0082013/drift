@@ -1,6 +1,7 @@
 "use client";
 
 import React, { FormEvent, useMemo, useState } from "react";
+import { buildSessionAuthorizationHeader } from "@/lib/auth/client-auth";
 
 type FormState = {
   energy: string;
@@ -55,7 +56,10 @@ export function CheckinForm() {
     try {
       const response = await fetch("/api/checkins", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...buildSessionAuthorizationHeader()
+        },
         body: JSON.stringify({
           date: new Date().toISOString().slice(0, 10),
           energy: Number(form.energy),

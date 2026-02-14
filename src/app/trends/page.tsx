@@ -4,7 +4,11 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { TrendChart } from "@/components/trend-chart";
-import { buildLoginHref, isLoggedIn } from "@/lib/auth/client-auth";
+import {
+  buildLoginHref,
+  buildSessionAuthorizationHeader,
+  isLoggedIn
+} from "@/lib/auth/client-auth";
 
 type TrendPoint = {
   date: string;
@@ -115,9 +119,12 @@ export default function TrendsPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/trends?window=${period}`, {
+        const response = await fetch(`/api/trends?days=${period}`, {
           method: "GET",
-          headers: { accept: "application/json" },
+          headers: {
+            accept: "application/json",
+            ...buildSessionAuthorizationHeader()
+          },
           cache: "no-store"
         });
 

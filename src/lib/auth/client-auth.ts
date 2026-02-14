@@ -1,4 +1,5 @@
 const AUTH_STORAGE_KEY = "drift_auth_user";
+const AUTH_COOKIE_KEY = "drift_session_user";
 
 export function isLoggedIn(): boolean {
   if (typeof window === "undefined") {
@@ -18,6 +19,31 @@ export function markLoggedIn(userId: string): void {
   }
 
   window.localStorage.setItem(AUTH_STORAGE_KEY, userId);
+  document.cookie = `${AUTH_COOKIE_KEY}=${encodeURIComponent(userId)}; Path=/; SameSite=Lax`;
+}
+
+export function getLoggedInUserId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const userId = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    return userId && userId.trim() ? userId : null;
+  } catch {
+    return null;
+  }
+}
+
+export function buildSessionAuthorizationHeader(): Record<string, string> {
+  const userId = getLoggedInUserId();
+  if (!userId) {
+    return {};
+  }
+
+  return {
+    authorization: `Bearer drift-user:${userId}`
+  };
 }
 
 export function sanitizeNextPath(next: string | null | undefined, fallback: string): string {

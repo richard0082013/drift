@@ -3,7 +3,11 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { buildLoginHref, isLoggedIn } from "@/lib/auth/client-auth";
+import {
+  buildLoginHref,
+  buildSessionAuthorizationHeader,
+  isLoggedIn
+} from "@/lib/auth/client-auth";
 
 type AlertItem = {
   id: string;
@@ -89,7 +93,10 @@ export default function AlertsPage() {
       try {
         const response = await fetch("/api/alerts", {
           method: "GET",
-          headers: { accept: "application/json" },
+          headers: {
+            accept: "application/json",
+            ...buildSessionAuthorizationHeader()
+          },
           cache: "no-store"
         });
         if (!response.ok) {

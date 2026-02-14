@@ -39,7 +39,7 @@ describe("GET /api/export", () => {
 
   it("exports only current user data as parseable csv", async () => {
     const request = new Request("http://localhost/api/export", {
-      headers: { "x-user-id": "u1" }
+      headers: { authorization: "Bearer drift-user:u1" }
     });
 
     const response = await GET(request);
