@@ -8,6 +8,7 @@ import {
   buildSessionAuthorizationHeader,
   isLoggedIn
 } from "@/lib/auth/client-auth";
+import { trackClientEvent } from "@/lib/metrics/client-events";
 
 type WeeklyInsights = {
   weekStart: string;
@@ -169,6 +170,9 @@ export default function InsightsPage() {
             setError("Failed to load weekly insights.");
           } else {
             setInsights(normalized);
+            trackClientEvent("insights_viewed", {
+              suggestionCount: normalized.suggestions.length
+            });
           }
         }
       } catch {

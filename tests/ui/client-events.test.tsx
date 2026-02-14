@@ -112,7 +112,22 @@ describe("client events", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            summary: "Weekly insight summary.",
+            weekStart: "2026-02-08",
+            weekEnd: "2026-02-14",
+            days: 7,
+            summary: {
+              checkinCount: 2,
+              alertCount: 1,
+              averages: {
+                energy: 3.2,
+                stress: 3.1,
+                social: 2.8,
+                driftIndex: 0.6
+              },
+              driftLevel: "moderate",
+              hasEnoughData: true
+            },
+            highlights: ["Weekly insight summary."],
             suggestions: ["Take one reset block.", "Keep routine steady."]
           }),
           { status: 200, headers: { "content-type": "application/json" } }
@@ -122,7 +137,7 @@ describe("client events", () => {
     render(<WeeklyInsightsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Weekly insight summary.")).toBeInTheDocument();
+      expect(screen.getByText(/Window:/)).toBeInTheDocument();
     });
 
     expect(trackClientEvent).toHaveBeenCalledWith(
