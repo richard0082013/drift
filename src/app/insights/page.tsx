@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -9,6 +8,7 @@ import {
   isLoggedIn
 } from "@/lib/auth/client-auth";
 import { trackClientEvent } from "@/lib/metrics/client-events";
+import { AuthRequiredState, ErrorState, LoadingState } from "@/components/page-feedback";
 
 type WeeklyInsights = {
   weekStart: string;
@@ -195,15 +195,14 @@ export default function InsightsPage() {
   }, [authenticated, days]);
 
   if (!authChecked) {
-    return <main><p>Checking authentication...</p></main>;
+    return <main><LoadingState /></main>;
   }
 
   if (!authenticated) {
     return (
       <main>
         <h1>Weekly Insights</h1>
-        <p role="alert">Please log in to continue.</p>
-        <Link href={buildLoginHref(pathname ?? "/insights", "/insights")}>Go to login</Link>
+        <AuthRequiredState loginHref={buildLoginHref(pathname ?? "/insights", "/insights")} />
       </main>
     );
   }
@@ -218,8 +217,8 @@ export default function InsightsPage() {
         <button type="button" aria-pressed={days === 14} onClick={() => setDays(14)}>14 days</button>
       </section>
 
-      {loading ? <p>Loading weekly insights...</p> : null}
-      {error ? <p role="alert">{error}</p> : null}
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} /> : null}
 
       {!loading && !error && insights ? (
         <section>

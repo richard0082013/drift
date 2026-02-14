@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { TrendChart } from "@/components/trend-chart";
 import {
@@ -9,6 +8,7 @@ import {
   buildSessionAuthorizationHeader,
   isLoggedIn
 } from "@/lib/auth/client-auth";
+import { AuthRequiredState, LoadingState } from "@/components/page-feedback";
 
 type TrendPoint = {
   date: string;
@@ -176,15 +176,14 @@ export default function TrendsPage() {
   }, [period, authenticated]);
 
   if (!authChecked) {
-    return <main><p>Checking authentication...</p></main>;
+    return <main><LoadingState /></main>;
   }
 
   if (!authenticated) {
     return (
       <main>
         <h1>Trends</h1>
-        <p role="alert">Please log in to continue.</p>
-        <Link href={buildLoginHref(pathname ?? "/trends", "/trends")}>Go to login</Link>
+        <AuthRequiredState loginHref={buildLoginHref(pathname ?? "/trends", "/trends")} />
       </main>
     );
   }
