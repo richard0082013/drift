@@ -29,10 +29,14 @@ describe("reminder settings page", () => {
   });
 
   it("loads and saves reminder settings", async () => {
-    window.localStorage.setItem("drift_auth_user", "u1");
-
     const fetchSpy = vi
       .spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -50,6 +54,17 @@ describe("reminder settings page", () => {
           status: 200,
           headers: { "content-type": "application/json" }
         })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            items: []
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          }
+        )
       );
 
     render(<SettingsPage />);
@@ -72,14 +87,25 @@ describe("reminder settings page", () => {
   });
 
   it("validates time and shows clear error", async () => {
-    window.localStorage.setItem("drift_auth_user", "u1");
-
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ settings: {} }), {
-        status: 200,
-        headers: { "content-type": "application/json" }
-      })
-    );
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ settings: {} }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ items: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      );
 
     render(<SettingsPage />);
 
@@ -96,11 +122,21 @@ describe("reminder settings page", () => {
   });
 
   it("shows generic save error without internal details", async () => {
-    window.localStorage.setItem("drift_auth_user", "u1");
-
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
         new Response(JSON.stringify({ settings: DEFAULT_SETTINGS }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ items: [] }), {
           status: 200,
           headers: { "content-type": "application/json" }
         })

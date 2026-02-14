@@ -8,18 +8,29 @@ import { TrendChart } from "@/components/trend-chart";
 describe("trends and alerts UI", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    window.localStorage.setItem("drift_auth_user", "u1");
   });
 
   it("supports 7/30 day switch", async () => {
-    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ data: [] }), {
-        status: 200,
-        headers: { "content-type": "application/json" }
-      })
-    );
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValue(
+        new Response(JSON.stringify({ data: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      );
 
     render(<TrendsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "7 days" })).toBeInTheDocument();
+    });
 
     const btn7 = screen.getByRole("button", { name: "7 days" });
     const btn30 = screen.getByRole("button", { name: "30 days" });
@@ -39,20 +50,27 @@ describe("trends and alerts UI", () => {
   });
 
   it("shows reason and action on alerts page", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          data: [
-            {
-              id: "a1",
-              reason: "Energy has trended down over recent check-ins.",
-              action: "Try a short reset today."
-            }
-          ]
-        }),
-        { status: 200, headers: { "content-type": "application/json" } }
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
       )
-    );
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: [
+              {
+                id: "a1",
+                reason: "Energy has trended down over recent check-ins.",
+                action: "Try a short reset today."
+              }
+            ]
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        )
+      );
 
     render(<AlertsPage />);
 
@@ -63,20 +81,27 @@ describe("trends and alerts UI", () => {
   });
 
   it("renders trends from series payload", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          window: 7,
-          series: {
-            dates: ["2026-02-12", "2026-02-13"],
-            energy: [4, 3],
-            stress: [2, 3],
-            social: [5, 4]
-          }
-        }),
-        { status: 200, headers: { "content-type": "application/json" } }
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
       )
-    );
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            window: 7,
+            series: {
+              dates: ["2026-02-12", "2026-02-13"],
+              energy: [4, 3],
+              stress: [2, 3],
+              social: [5, 4]
+            }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        )
+      );
 
     render(<TrendsPage />);
 
@@ -87,12 +112,31 @@ describe("trends and alerts UI", () => {
   });
 
   it("shows empty and error states clearly", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ error: "bad" }), {
-        status: 500,
-        headers: { "content-type": "application/json" }
-      })
-    );
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "bad" }), {
+          status: 500,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "bad" }), {
+          status: 500,
+          headers: { "content-type": "application/json" }
+        })
+      );
 
     render(
       <TrendChart
