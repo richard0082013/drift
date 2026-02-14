@@ -1,6 +1,22 @@
 import { test, expect } from "@playwright/test";
 
 test("mvp flow: checkin -> trends -> alerts", async ({ page }) => {
+  await page.route("**/api/checkins", async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        checkin: {
+          id: "c1",
+          date: "2026-02-14",
+          energy: 4,
+          stress: 3,
+          social: 2
+        }
+      })
+    });
+  });
+
   await page.route("**/api/trends?*", async (route) => {
     await route.fulfill({
       status: 200,
@@ -30,7 +46,9 @@ test("mvp flow: checkin -> trends -> alerts", async ({ page }) => {
     });
   });
 
-  await page.goto("http://127.0.0.1:3000/checkin");
+  await page.goto("http://127.0.0.1:3000/login?next=%2Fcheckin");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:3000/checkin");
 
   await page.getByLabel("Energy (1-5)").fill("4");
   await page.getByLabel("Stress (1-5)").fill("3");
