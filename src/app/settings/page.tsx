@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { buildLoginHref, isLoggedIn } from "@/lib/auth/client-auth";
@@ -9,6 +8,7 @@ import {
   type ReminderDeliveryStatus,
   type ReminderStatusItem
 } from "@/components/reminder-status-list";
+import { AuthRequiredState, ErrorState, LoadingState } from "@/components/page-feedback";
 import { trackClientEvent } from "@/lib/metrics/client-events";
 
 type ReminderSettings = {
@@ -287,15 +287,14 @@ export default function SettingsPage() {
   }
 
   if (!authChecked) {
-    return <main><p>Checking authentication...</p></main>;
+    return <main><LoadingState /></main>;
   }
 
   if (!authenticated) {
     return (
       <main>
         <h1>Reminder Settings</h1>
-        <p role="alert">Please log in to continue.</p>
-        <Link href={buildLoginHref(pathname ?? "/settings", "/settings")}>Go to login</Link>
+        <AuthRequiredState loginHref={buildLoginHref(pathname ?? "/settings", "/settings")} />
       </main>
     );
   }
@@ -304,7 +303,7 @@ export default function SettingsPage() {
     <main>
       <h1>Reminder Settings</h1>
       <p>Set reminder time, timezone, and notification preference.</p>
-      {loading ? <p>Loading settings...</p> : null}
+      {loading ? <LoadingState /> : null}
       <form onSubmit={onSubmit}>
         <label>
           Reminder Time
@@ -335,11 +334,11 @@ export default function SettingsPage() {
           />
         </label>
         <button type="submit" disabled={saving}>
-          {saving ? "Saving..." : "Save Settings"}
+          {saving ? "Submitting..." : "Save Settings"}
         </button>
       </form>
       <ReminderStatusList items={statusItems} loading={statusLoading} error={statusError} />
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? <ErrorState message={error} /> : null}
       {success ? <p>{success}</p> : null}
     </main>
   );

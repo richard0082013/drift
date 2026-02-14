@@ -138,4 +138,34 @@ describe("auth gating", () => {
     });
     expect(screen.queryByText(/stack trace/i)).not.toBeInTheDocument();
   });
+
+  it("retries login after failure and then redirects", async () => {
+    mockNext = "/checkin";
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: { message: "temporary" } }), {
+          status: 500,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      );
+
+    render(<LoginPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Unable to sign in right now.")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(routerPush).toHaveBeenCalledWith("/checkin");
+    });
+  });
 });

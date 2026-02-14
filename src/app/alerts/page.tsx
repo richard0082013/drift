@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   buildLoginHref,
   buildSessionAuthorizationHeader,
   isLoggedIn
 } from "@/lib/auth/client-auth";
+import { AuthRequiredState, EmptyState, ErrorState, LoadingState } from "@/components/page-feedback";
 
 type AlertItem = {
   id: string;
@@ -147,15 +147,14 @@ export default function AlertsPage() {
   }, [authenticated]);
 
   if (!authChecked) {
-    return <main><p>Checking authentication...</p></main>;
+    return <main><LoadingState /></main>;
   }
 
   if (!authenticated) {
     return (
       <main>
         <h1>Alerts</h1>
-        <p role="alert">Please log in to continue.</p>
-        <Link href={buildLoginHref(pathname ?? "/alerts", "/alerts")}>Go to login</Link>
+        <AuthRequiredState loginHref={buildLoginHref(pathname ?? "/alerts", "/alerts")} />
       </main>
     );
   }
@@ -163,9 +162,9 @@ export default function AlertsPage() {
   return (
     <main>
       <h1>Alerts</h1>
-      {loading ? <p>Loading alerts...</p> : null}
-      {error ? <p role="alert">{error}</p> : null}
-      {!loading && !error && data.length === 0 ? <p>No active alerts.</p> : null}
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} /> : null}
+      {!loading && !error && data.length === 0 ? <EmptyState message="No active alerts." /> : null}
       {!loading && !error && data.length > 0 ? (
         <ul>
           {data.map((item) => (

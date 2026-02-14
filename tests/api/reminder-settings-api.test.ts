@@ -31,8 +31,12 @@ describe("/api/settings/reminder", () => {
 
   it("returns 401 when session is missing", async () => {
     const response = await GET(new Request("http://localhost/api/settings/reminder"));
+    const body = await response.json();
 
     expect(response.status).toBe(401);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
   });
 
   it("returns current settings for authenticated user", async () => {
@@ -50,19 +54,49 @@ describe("/api/settings/reminder", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
-      settings: {
+    expect(body).toEqual(
+      expect.objectContaining({
+        settings: {
         reminderHourLocal: 8,
         notificationsEnabled: false,
         reminderTime: "08:00",
         timezone: "America/New_York",
         enabled: false
-      }
-    });
+        },
+        requestId: expect.any(String),
+        timestamp: expect.any(String)
+      })
+    );
     expect(userFindUniqueMock).toHaveBeenCalledWith({
       where: { id: "u1" },
       select: { timezone: true }
     });
+  });
+
+  it("falls back to safe defaults when stored values are out of contract", async () => {
+    userFindUniqueMock.mockResolvedValue({ timezone: "Invalid/Zone" });
+    preferenceFindUniqueMock.mockResolvedValue({
+      reminderHourLocal: 99,
+      notificationsEnabled: true
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/settings/reminder", {
+        headers: { cookie: `drift_session=${createSessionToken("u1")}` }
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.settings).toEqual({
+      reminderHourLocal: 20,
+      notificationsEnabled: true,
+      reminderTime: "20:00",
+      timezone: "UTC",
+      enabled: true
+    });
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
   });
 
   it("validates payload and rejects non-hour reminder time", async () => {
@@ -84,6 +118,8 @@ describe("/api/settings/reminder", () => {
 
     expect(response.status).toBe(400);
     expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
     expect(userUpsertMock).not.toHaveBeenCalled();
     expect(preferenceUpsertMock).not.toHaveBeenCalled();
   });
@@ -110,15 +146,19 @@ describe("/api/settings/reminder", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
-      settings: {
+    expect(body).toEqual(
+      expect.objectContaining({
+        settings: {
         reminderHourLocal: 10,
         notificationsEnabled: true,
         reminderTime: "10:00",
         timezone: "UTC",
         enabled: true
-      }
-    });
+        },
+        requestId: expect.any(String),
+        timestamp: expect.any(String)
+      })
+    );
 
     expect(userUpsertMock).toHaveBeenCalledWith({
       where: { id: "u1" },
@@ -173,6 +213,8 @@ describe("/api/settings/reminder", () => {
       timezone: "Asia/Shanghai",
       enabled: false
     });
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
     expect(preferenceUpsertMock).toHaveBeenCalledWith({
       where: { userId: "u1" },
       update: {
@@ -185,5 +227,27 @@ describe("/api/settings/reminder", () => {
         notificationsEnabled: false
       }
     });
+  });
+
+  it("rejects reminderHourLocal out of range", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/settings/reminder", {
+        method: "POST",
+        headers: {
+          cookie: `drift_session=${createSessionToken("u1")}`,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          reminderHourLocal: 24,
+          notificationsEnabled: true
+        })
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
   });
 });

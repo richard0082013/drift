@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { EmptyState, ErrorState, LoadingState } from "@/components/page-feedback";
 
 type Point = {
   date: string;
@@ -29,10 +30,10 @@ export function TrendChart({ period, data, loading, error, onPeriodChange }: Pro
         </button>
       </div>
 
-      {loading ? <p>Loading trends...</p> : null}
-      {error ? <p role="alert">{error}</p> : null}
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} /> : null}
 
-      {!loading && !error && data.length === 0 ? <p>No trend data yet.</p> : null}
+      {!loading && !error && data.length === 0 ? <EmptyState message="No trend data yet." /> : null}
 
       {!loading && !error && data.length > 0 ? (
         <ul>

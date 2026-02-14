@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loginWithSession, sanitizeNextPath } from "@/lib/auth/client-auth";
+import { ErrorState } from "@/components/page-feedback";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -59,10 +60,10 @@ export default function LoginPage() {
           />
         </label>
         <button type="submit" disabled={submitting}>
-          {submitting ? "Signing in..." : "Sign in"}
+          {submitting ? "Submitting..." : "Sign in"}
         </button>
       </form>
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? <ErrorState message={error} /> : null}
     </main>
   );
 }

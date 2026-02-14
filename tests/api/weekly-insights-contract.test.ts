@@ -42,6 +42,22 @@ describe("weekly insights api contract", () => {
 
     expect(response.status).toBe(400);
     expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
+  });
+
+  it("rejects days beyond supported boundary", async () => {
+    const response = await GET(
+      new Request("http://localhost/api/insights/weekly?days=15", {
+        headers: { cookie: `drift_session=${createSessionToken("u1")}` }
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
   });
 
   it("returns fixed contract fields for FE integration", async () => {
@@ -53,7 +69,7 @@ describe("weekly insights api contract", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
+    expect(body).toEqual(expect.objectContaining({
       weekStart: "2026-02-08",
       weekEnd: "2026-02-14",
       days: 7,
@@ -70,10 +86,28 @@ describe("weekly insights api contract", () => {
         hasEnoughData: false
       },
       highlights: expect.any(Array),
-      suggestions: expect.any(Array)
-    });
+      suggestions: expect.any(Array),
+      requestId: expect.any(String),
+      timestamp: expect.any(String)
+    }));
     expect(body.highlights.length).toBeGreaterThanOrEqual(1);
     expect(body.suggestions.length).toBeGreaterThanOrEqual(2);
     expect(body.suggestions.length).toBeLessThanOrEqual(3);
+  });
+
+  it("supports upper valid boundary days=14", async () => {
+    const response = await GET(
+      new Request("http://localhost/api/insights/weekly?days=14", {
+        headers: { cookie: `drift_session=${createSessionToken("u1")}` }
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.days).toBe(14);
+    expect(body.weekStart).toBe("2026-02-01");
+    expect(body.weekEnd).toBe("2026-02-14");
+    expect(typeof body.requestId).toBe("string");
+    expect(typeof body.timestamp).toBe("string");
   });
 });
