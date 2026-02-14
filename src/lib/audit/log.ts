@@ -8,6 +8,8 @@ type AuditPayload = {
   meta?: Record<string, unknown>;
 };
 
+const AUDIT_SCHEMA_VERSION = "audit.v2";
+
 function buildAuditActorEmail(actorId: string) {
   const encoded = Buffer.from(actorId, "utf8").toString("base64url").slice(0, 40) || "actor";
   return `audit-${encoded}@local.drift`;
@@ -32,6 +34,10 @@ export async function writeAuditLog(payload: AuditPayload) {
         template: payload.action,
         status: payload.status,
         payloadJson: {
+          schemaVersion: AUDIT_SCHEMA_VERSION,
+          action: payload.action,
+          actorId: payload.actorId,
+          status: payload.status,
           target: payload.target ?? null,
           meta: payload.meta ?? {}
         },

@@ -15,6 +15,8 @@ type CsvRow = {
   drift_reasons: string;
 };
 
+const EXPORT_VERSION = "2026-02-15.v2";
+
 function toCsvValue(value: string) {
   if (value.includes(",") || value.includes("\"") || value.includes("\n")) {
     return `"${value.replaceAll("\"", '""')}"`;
@@ -43,12 +45,13 @@ function formatCsv(rows: CsvRow[]) {
 
 export async function GET(request: Request) {
   const userId = getSessionUserId(request);
+  const now = new Date();
   if (!userId) {
     await writeAuditLog({
       action: "export.csv",
       actorId: "anon",
       status: "failed",
-      meta: { reason: "unauthorized" }
+      meta: { reason: "unauthorized", event: "export.csv", occurredAt: now.toISOString() }
     });
     return unauthorizedResponse();
   }
@@ -61,7 +64,11 @@ export async function GET(request: Request) {
       actorId: userId,
       status: "rate_limited",
       target: userId,
-      meta: { retryAfterSeconds: decision.retryAfterSeconds }
+      meta: {
+        retryAfterSeconds: decision.retryAfterSeconds,
+        event: "export.csv",
+        occurredAt: now.toISOString()
+      }
     });
     return NextResponse.json(
       {
@@ -123,25 +130,35 @@ export async function GET(request: Request) {
   });
 
   const csv = formatCsv(rows);
+  const generatedAt = new Date().toISOString();
   await trackMetricEvent({
     event: "export.csv",
     actorId: userId,
     status: "success",
     target: userId,
-    properties: { rowCount: rows.length }
+    properties: { rowCount: rows.length, exportVersion: EXPORT_VERSION, generatedAt }
   });
   await writeAuditLog({
     action: "export.csv",
     actorId: userId,
     status: "success",
     target: userId,
-    meta: { rowCount: rows.length }
+    meta: {
+      rowCount: rows.length,
+      exportVersion: EXPORT_VERSION,
+      generatedAt,
+      event: "export.csv",
+      occurredAt: now.toISOString()
+    }
   });
   return new NextResponse(csv, {
     status: 200,
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename=drift-export-${userId}.csv`
+      "content-disposition": `attachment; filename=drift-export-${userId}.csv`,
+      "x-export-generated-at": generatedAt,
+      "x-export-record-count": String(rows.length),
+      "x-export-version": EXPORT_VERSION
     }
   });
 }

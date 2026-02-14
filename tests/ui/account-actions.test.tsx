@@ -42,6 +42,7 @@ describe("privacy and account actions", () => {
     await waitFor(() => {
       expect(screen.getByText(/not a medical service/i)).toBeInTheDocument();
     });
+    expect(screen.getByText(/soft-delete retention window/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Go to account actions" })).toHaveAttribute(
       "href",
       "/account"
@@ -100,6 +101,37 @@ describe("privacy and account actions", () => {
     expect(screen.queryByText(/stack trace/i)).not.toBeInTheDocument();
   });
 
+  it("shows export metadata after successful export", async () => {
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ session: { userId: "u1" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response("date,energy\n2026-02-15,4", {
+          status: 200,
+          headers: {
+            "content-type": "text/csv",
+            "x-export-generated-at": "2026-02-15T01:23:45.000Z",
+            "x-export-record-count": "12",
+            "x-export-version": "2026-02-15.v2"
+          }
+        })
+      );
+
+    render(<AccountPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Export my data" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Export generated.")).toBeInTheDocument();
+      expect(screen.getByText("2026-02-15T01:23:45.000Z")).toBeInTheDocument();
+      expect(screen.getByText("12")).toBeInTheDocument();
+      expect(screen.getByText("2026-02-15.v2")).toBeInTheDocument();
+    });
+  });
+
   it("shows recovery hint when delete request fails", async () => {
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce(
@@ -131,6 +163,42 @@ describe("privacy and account actions", () => {
         screen.getByText(
           "Deletion failed. You can retry after reviewing your connection and confirmation details."
         )
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows retention-window messaging when delete succeeds", async () => {
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ session: { userId: "u1" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ deleted: true, strategy: "soft", purgeAfter: "2026-03-17T00:00:00.000Z" }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      );
+
+    render(<AccountPage />);
+    await screen.findByRole("button", { name: "Delete account" });
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Start delete confirmation" }));
+    fireEvent.change(screen.getByLabelText("Type DELETE to confirm"), { target: { value: "DELETE" } });
+    await flushCountdown(5);
+    vi.useRealTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Account entered retention window and is scheduled for purge after 2026-03-17T00:00:00.000Z."
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("If you need to restore access during the retention window, contact support.")
       ).toBeInTheDocument();
     });
   });

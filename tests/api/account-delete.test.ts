@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { deleteUserMock, getSessionUserIdMock } = vi.hoisted(() => ({
-  deleteUserMock: vi.fn(),
+const { updateUserMock, getSessionUserIdMock } = vi.hoisted(() => ({
+  updateUserMock: vi.fn(),
   getSessionUserIdMock: vi.fn()
 }));
 
@@ -22,7 +22,7 @@ vi.mock("@/lib/auth/session", () => ({
 vi.mock("@/lib/db", () => ({
   db: {
     user: {
-      delete: deleteUserMock
+      update: updateUserMock
     }
   }
 }));
@@ -44,12 +44,12 @@ describe("/api/account/delete", () => {
     );
 
     expect(response.status).toBe(401);
-    expect(deleteUserMock).not.toHaveBeenCalled();
+    expect(updateUserMock).not.toHaveBeenCalled();
   });
 
-  it("hard deletes account when session user exists", async () => {
+  it("soft deletes account when session user exists", async () => {
     getSessionUserIdMock.mockReturnValue("u1");
-    deleteUserMock.mockResolvedValue({ id: "u1" });
+    updateUserMock.mockResolvedValue({ id: "u1" });
 
     const response = await DELETE(
       new Request("http://localhost/api/account/delete", {
@@ -59,18 +59,24 @@ describe("/api/account/delete", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
-      deleted: true,
-      strategy: "hard"
-    });
-    expect(deleteUserMock).toHaveBeenCalledWith({
-      where: { id: "u1" }
-    });
+    expect(body.deleted).toBe(true);
+    expect(body.strategy).toBe("soft");
+    expect(typeof body.purgeAfter).toBe("string");
+    expect(body.message).toBe("Account scheduled for permanent deletion.");
+    expect(updateUserMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "u1" },
+        data: expect.objectContaining({
+          deletedAt: expect.any(Date),
+          purgeAfter: expect.any(Date)
+        })
+      })
+    );
   });
 
   it("returns 404 when account does not exist", async () => {
     getSessionUserIdMock.mockReturnValue("u404");
-    deleteUserMock.mockRejectedValue({ code: "P2025" });
+    updateUserMock.mockRejectedValue({ code: "P2025" });
 
     const response = await POST(
       new Request("http://localhost/api/account/delete", {

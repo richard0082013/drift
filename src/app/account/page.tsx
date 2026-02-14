@@ -1,9 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { buildLoginHref, isLoggedIn } from "@/lib/auth/client-auth";
+import {
+  AuthRequiredState,
+  ErrorState,
+  LoadingState
+} from "@/components/page-feedback";
+
+type ExportMetadata = {
+  generatedAt: string;
+  recordCount: string;
+  version: string;
+};
 
 export default function AccountPage() {
   const DELETE_COUNTDOWN_SECONDS = 5;
@@ -17,6 +27,7 @@ export default function AccountPage() {
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [exportMetadata, setExportMetadata] = useState<ExportMetadata | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -62,6 +73,7 @@ export default function AccountPage() {
   async function onExport() {
     setError(null);
     setSuccess(null);
+    setExportMetadata(null);
     setExporting(true);
 
     try {
@@ -71,7 +83,12 @@ export default function AccountPage() {
         return;
       }
 
-      setSuccess("Export request started.");
+      setExportMetadata({
+        generatedAt: response.headers.get("x-export-generated-at") ?? "unknown",
+        recordCount: response.headers.get("x-export-record-count") ?? "unknown",
+        version: response.headers.get("x-export-version") ?? "unknown"
+      });
+      setSuccess("Export generated.");
     } catch {
       setError("Unable to export data right now.");
     } finally {
@@ -100,7 +117,10 @@ export default function AccountPage() {
         return;
       }
 
-      setSuccess("Account deletion request submitted.");
+      const payload = (await response.json().catch(() => null)) as { purgeAfter?: unknown } | null;
+      const purgeAfter =
+        payload && typeof payload.purgeAfter === "string" ? payload.purgeAfter : "the retention window end";
+      setSuccess(`Account entered retention window and is scheduled for purge after ${purgeAfter}.`);
       setConfirmText("");
       setConfirmArmed(false);
       setCountdown(0);
@@ -115,15 +135,14 @@ export default function AccountPage() {
   }
 
   if (!authChecked) {
-    return <main><p>Checking authentication...</p></main>;
+    return <main><LoadingState /></main>;
   }
 
   if (!authenticated) {
     return (
       <main>
         <h1>Account</h1>
-        <p role="alert">Please log in to continue.</p>
-        <Link href={buildLoginHref(pathname ?? "/account", "/account")}>Go to login</Link>
+        <AuthRequiredState loginHref={buildLoginHref(pathname ?? "/account", "/account")} />
       </main>
     );
   }
@@ -136,13 +155,23 @@ export default function AccountPage() {
       <section>
         <h2>Export Data</h2>
         <button type="button" onClick={onExport} disabled={exporting}>
-          {exporting ? "Exporting..." : "Export my data"}
+          {exporting ? "Submitting..." : "Export my data"}
         </button>
+        {exportMetadata ? (
+          <dl>
+            <dt>Generated at</dt>
+            <dd>{exportMetadata.generatedAt}</dd>
+            <dt>Record count</dt>
+            <dd>{exportMetadata.recordCount}</dd>
+            <dt>Version</dt>
+            <dd>{exportMetadata.version}</dd>
+          </dl>
+        ) : null}
       </section>
 
       <section>
         <h2>Delete Account</h2>
-        <p>Danger zone. This action cannot be undone.</p>
+        <p>Deletion is soft-first. Your account enters a retention window before permanent purge.</p>
         {!confirmArmed ? (
           <button type="button" onClick={onArmDelete}>
             Start delete confirmation
@@ -161,13 +190,14 @@ export default function AccountPage() {
             />
           </label>
           <button type="submit" disabled={!canDelete || deleting}>
-            {deleting ? "Deleting..." : "Delete account"}
+            {deleting ? "Submitting..." : "Delete account"}
           </button>
         </form>
       </section>
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? <ErrorState message={error} /> : null}
       {success ? <p>{success}</p> : null}
+      <p>If you need to restore access during the retention window, contact support.</p>
     </main>
   );
 }

@@ -12,14 +12,65 @@ const NOT_FOUND_ERROR = {
   }
 };
 
+const DEFAULT_PURGE_WINDOW_DAYS = 30;
+
+function getPurgeAfter(now: Date) {
+  const days = Number(process.env.ACCOUNT_PURGE_WINDOW_DAYS ?? DEFAULT_PURGE_WINDOW_DAYS);
+  const safeDays = Number.isInteger(days) && days > 0 && days <= 365 ? days : DEFAULT_PURGE_WINDOW_DAYS;
+  return new Date(now.getTime() + safeDays * 24 * 60 * 60 * 1000);
+}
+
+function isPrismaRetentionArgError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return (
+    error.message.includes("Unknown argument `deletedAt`") ||
+    error.message.includes("Unknown argument `purgeAfter`")
+  );
+}
+
+async function markUserForPurge(userId: string, now: Date, purgeAfter: Date) {
+  try {
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        deletedAt: now,
+        purgeAfter
+      }
+    });
+    return;
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2025") {
+      throw error;
+    }
+    if (!isPrismaRetentionArgError(error)) {
+      throw error;
+    }
+  }
+
+  const updated = await db.$executeRawUnsafe(
+    `UPDATE "User" SET deletedAt = ?, purgeAfter = ?, updatedAt = ? WHERE id = ?`,
+    now.toISOString(),
+    purgeAfter.toISOString(),
+    now.toISOString(),
+    userId
+  );
+
+  if (!updated) {
+    throw { code: "P2025" };
+  }
+}
+
 async function handleDelete(request: Request) {
   const userId = getSessionUserId(request);
+  const now = new Date();
   if (!userId) {
     await writeAuditLog({
       action: "account.delete",
       actorId: "anon",
       status: "failed",
-      meta: { reason: "unauthorized" }
+      meta: { reason: "unauthorized", event: "account.delete", occurredAt: now.toISOString() }
     });
     return unauthorizedResponse();
   }
@@ -32,7 +83,11 @@ async function handleDelete(request: Request) {
       actorId: userId,
       status: "rate_limited",
       target: userId,
-      meta: { retryAfterSeconds: decision.retryAfterSeconds }
+      meta: {
+        retryAfterSeconds: decision.retryAfterSeconds,
+        event: "account.delete",
+        occurredAt: now.toISOString()
+      }
     });
     return NextResponse.json(
       {
@@ -46,25 +101,33 @@ async function handleDelete(request: Request) {
   }
 
   try {
-    await db.user.delete({
-      where: { id: userId }
-    });
+    const purgeAfter = getPurgeAfter(now);
+    await markUserForPurge(userId, now, purgeAfter);
 
     await trackMetricEvent({
       event: "account.delete",
       actorId: userId,
       status: "success",
-      target: userId
+      target: userId,
+      properties: { strategy: "soft", purgeAfter: purgeAfter.toISOString() }
     });
     await writeAuditLog({
       action: "account.delete",
       actorId: userId,
       status: "success",
-      target: userId
+      target: userId,
+      meta: {
+        strategy: "soft",
+        purgeAfter: purgeAfter.toISOString(),
+        event: "account.delete",
+        occurredAt: now.toISOString()
+      }
     });
     return NextResponse.json({
       deleted: true,
-      strategy: "hard"
+      strategy: "soft",
+      purgeAfter: purgeAfter.toISOString(),
+      message: "Account scheduled for permanent deletion."
     });
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2025") {
@@ -73,7 +136,7 @@ async function handleDelete(request: Request) {
         actorId: userId,
         status: "failed",
         target: userId,
-        meta: { reason: "not_found" }
+        meta: { reason: "not_found", event: "account.delete", occurredAt: now.toISOString() }
       });
       return NextResponse.json(NOT_FOUND_ERROR, { status: 404 });
     }
@@ -83,7 +146,7 @@ async function handleDelete(request: Request) {
       actorId: userId,
       status: "failed",
       target: userId,
-      meta: { reason: "internal_error" }
+      meta: { reason: "internal_error", event: "account.delete", occurredAt: now.toISOString() }
     });
     return NextResponse.json(
       {
