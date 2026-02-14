@@ -9,6 +9,7 @@ import {
   type ReminderPreference
 } from "@/lib/notifications/reminder";
 import { sendReminder } from "@/lib/notifications/provider";
+import { trackMetricEvent } from "@/lib/metrics/events";
 
 export async function POST() {
   const now = new Date();
@@ -86,6 +87,16 @@ export async function POST() {
           sentAt: now
         }
       });
+      await trackMetricEvent({
+        event: "reminder.dispatch",
+        actorId: due.userId,
+        status: "success",
+        target: due.userId,
+        properties: {
+          provider: dispatch.provider,
+          localDate
+        }
+      });
       sentCount += 1;
     } catch (error) {
       await db.notificationLog.create({
@@ -103,6 +114,16 @@ export async function POST() {
             error: error instanceof Error ? error.message : "Unknown error"
           },
           sentAt: null
+        }
+      });
+      await trackMetricEvent({
+        event: "reminder.dispatch",
+        actorId: due.userId,
+        status: "failed",
+        target: due.userId,
+        properties: {
+          localDate,
+          error: error instanceof Error ? error.message : "Unknown error"
         }
       });
       failedCount += 1;

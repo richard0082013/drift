@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { issueSessionCookie } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit/log";
 import { checkRateLimit, getRateLimitConfig } from "@/lib/security/rate-limit";
+import { trackMetricEvent } from "@/lib/metrics/events";
 
 type LoginPayload = {
   email?: string;
@@ -84,6 +85,13 @@ export async function POST(request: Request) {
     }
   });
   response.headers.append("set-cookie", issueSessionCookie(user.id));
+  await trackMetricEvent({
+    event: "auth.login",
+    actorId: user.id,
+    status: "success",
+    target: user.id,
+    properties: { ip }
+  });
   await writeAuditLog({
     action: "auth.login",
     actorId: user.id,

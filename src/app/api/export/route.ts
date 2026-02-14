@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit/log";
 import { checkRateLimit, getRateLimitConfig } from "@/lib/security/rate-limit";
+import { trackMetricEvent } from "@/lib/metrics/events";
 
 type CsvRow = {
   date: string;
@@ -122,6 +123,13 @@ export async function GET(request: Request) {
   });
 
   const csv = formatCsv(rows);
+  await trackMetricEvent({
+    event: "export.csv",
+    actorId: userId,
+    status: "success",
+    target: userId,
+    properties: { rowCount: rows.length }
+  });
   await writeAuditLog({
     action: "export.csv",
     actorId: userId,
