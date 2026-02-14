@@ -17,14 +17,6 @@ type ReminderSettings = {
   enabled: boolean;
 };
 
-type ReminderSettingsApiShape = {
-  reminderTime?: unknown;
-  reminderHourLocal?: unknown;
-  timezone?: unknown;
-  enabled?: unknown;
-  notificationsEnabled?: unknown;
-};
-
 const DEFAULT_SETTINGS: ReminderSettings = {
   reminderTime: "09:00",
   timezone: "UTC",
@@ -101,23 +93,19 @@ function normalizeReminderSettings(payload: unknown): ReminderSettings {
     return DEFAULT_SETTINGS;
   }
 
-  const source = payload as { settings?: ReminderSettingsApiShape };
+  const source = payload as { settings?: Partial<ReminderSettings> };
   const settings = source.settings ?? {};
 
   const reminderTime =
-    typeof settings.reminderHourLocal === "string"
-      ? settings.reminderHourLocal
-      : typeof settings.reminderTime === "string"
-        ? settings.reminderTime
-        : DEFAULT_SETTINGS.reminderTime;
+    typeof settings.reminderTime === "string"
+      ? settings.reminderTime
+      : DEFAULT_SETTINGS.reminderTime;
 
   const timezone = typeof settings.timezone === "string" ? settings.timezone : DEFAULT_SETTINGS.timezone;
   const enabled =
-    typeof settings.notificationsEnabled === "boolean"
-      ? settings.notificationsEnabled
-      : typeof settings.enabled === "boolean"
-        ? settings.enabled
-        : DEFAULT_SETTINGS.enabled;
+    typeof settings.enabled === "boolean"
+      ? settings.enabled
+      : DEFAULT_SETTINGS.enabled;
 
   return { reminderTime, timezone, enabled };
 }
@@ -275,9 +263,9 @@ export default function SettingsPage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          reminderHourLocal: settings.reminderTime,
+          reminderTime: settings.reminderTime,
           timezone: settings.timezone,
-          notificationsEnabled: settings.enabled
+          enabled: settings.enabled
         })
       });
 

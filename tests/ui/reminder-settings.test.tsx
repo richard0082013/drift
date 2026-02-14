@@ -88,9 +88,9 @@ describe("reminder settings page", () => {
   it("loads and saves reminder settings", async () => {
     const fetchSpy = setupFetchMock({
       settings: {
-        reminderHourLocal: "08:30",
+        reminderTime: "08:30",
         timezone: "America/Los_Angeles",
-        notificationsEnabled: true
+        enabled: true
       }
     });
 
@@ -117,9 +117,9 @@ describe("reminder settings page", () => {
     expect(postCall).toBeDefined();
     const body = JSON.parse(String(postCall?.[1]?.body ?? "{}"));
     expect(body).toEqual({
-      reminderHourLocal: "10:15",
+      reminderTime: "10:15",
       timezone: "UTC",
-      notificationsEnabled: false
+      enabled: false
     });
   });
 
