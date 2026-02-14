@@ -17,6 +17,14 @@ type ReminderSettings = {
   enabled: boolean;
 };
 
+type ReminderSettingsApiShape = {
+  reminderTime?: unknown;
+  reminderHourLocal?: unknown;
+  timezone?: unknown;
+  enabled?: unknown;
+  notificationsEnabled?: unknown;
+};
+
 const DEFAULT_SETTINGS: ReminderSettings = {
   reminderTime: "09:00",
   timezone: "UTC",
@@ -88,6 +96,32 @@ function isValidTime(value: string): boolean {
   return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
 }
 
+function normalizeReminderSettings(payload: unknown): ReminderSettings {
+  if (!payload || typeof payload !== "object") {
+    return DEFAULT_SETTINGS;
+  }
+
+  const source = payload as { settings?: ReminderSettingsApiShape };
+  const settings = source.settings ?? {};
+
+  const reminderTime =
+    typeof settings.reminderHourLocal === "string"
+      ? settings.reminderHourLocal
+      : typeof settings.reminderTime === "string"
+        ? settings.reminderTime
+        : DEFAULT_SETTINGS.reminderTime;
+
+  const timezone = typeof settings.timezone === "string" ? settings.timezone : DEFAULT_SETTINGS.timezone;
+  const enabled =
+    typeof settings.notificationsEnabled === "boolean"
+      ? settings.notificationsEnabled
+      : typeof settings.enabled === "boolean"
+        ? settings.enabled
+        : DEFAULT_SETTINGS.enabled;
+
+  return { reminderTime, timezone, enabled };
+}
+
 export default function SettingsPage() {
   const pathname = usePathname();
   const [authChecked, setAuthChecked] = useState(false);
@@ -147,19 +181,10 @@ export default function SettingsPage() {
           return;
         }
 
-        const payload = (await response.json()) as {
-          settings?: Partial<ReminderSettings>;
-        };
+        const payload = (await response.json()) as unknown;
 
-        if (active && payload.settings) {
-          setSettings({
-            reminderTime: payload.settings.reminderTime ?? DEFAULT_SETTINGS.reminderTime,
-            timezone: payload.settings.timezone ?? DEFAULT_SETTINGS.timezone,
-            enabled:
-              typeof payload.settings.enabled === "boolean"
-                ? payload.settings.enabled
-                : DEFAULT_SETTINGS.enabled
-          });
+        if (active) {
+          setSettings(normalizeReminderSettings(payload));
         }
       } catch {
         if (active) {
@@ -249,7 +274,11 @@ export default function SettingsPage() {
       const response = await fetch("/api/settings/reminder", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(settings)
+        body: JSON.stringify({
+          reminderHourLocal: settings.reminderTime,
+          timezone: settings.timezone,
+          notificationsEnabled: settings.enabled
+        })
       });
 
       if (!response.ok) {
