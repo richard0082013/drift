@@ -64,7 +64,7 @@ describe("auth gating", () => {
 
   it("redirects to next page after login", async () => {
     mockNext = "/alerts";
-    vi.spyOn(global, "fetch").mockResolvedValue(
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "content-type": "application/json" }
@@ -77,7 +77,49 @@ describe("auth gating", () => {
     await waitFor(() => {
       expect(routerPush).toHaveBeenCalledWith("/alerts");
     });
-    expect(global.fetch).toHaveBeenCalledWith("/api/auth/login", expect.any(Object));
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/auth/login",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "demo@drift.local", name: "Demo User" })
+      })
+    );
+  });
+
+  it("falls back to /checkin when next is unsafe", async () => {
+    mockNext = "//evil.example";
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      })
+    );
+
+    render(<LoginPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(routerPush).toHaveBeenCalledWith("/checkin");
+    });
+  });
+
+  it("shows validation message for invalid email payload", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: { message: "A valid email is required." } }), {
+        status: 400,
+        headers: { "content-type": "application/json" }
+      })
+    );
+
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "demo" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Please enter a valid email.")).toBeInTheDocument();
+    });
   });
 
   it("shows generic login error without internal details", async () => {

@@ -11,16 +11,29 @@ export async function isLoggedIn(): Promise<boolean> {
   }
 }
 
-export async function loginWithSession(userId = "demo-user"): Promise<boolean> {
+export type LoginPayload = {
+  email: string;
+  name?: string;
+};
+
+export type LoginResult = {
+  ok: boolean;
+  status: number;
+};
+
+export async function loginWithSession(payload: LoginPayload): Promise<LoginResult> {
   try {
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ userId })
+      body: JSON.stringify({
+        email: payload.email.trim(),
+        name: payload.name?.trim() || undefined
+      })
     });
-    return response.ok;
+    return { ok: response.ok, status: response.status };
   } catch {
-    return false;
+    return { ok: false, status: 0 };
   }
 }
 
