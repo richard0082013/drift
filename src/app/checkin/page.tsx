@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CheckinForm } from "@/components/checkin-form";
 import { buildLoginHref, isLoggedIn } from "@/lib/auth/client-auth";
+import { trackClientEvent } from "@/lib/metrics/client-events";
 
 export default function CheckinPage() {
   const pathname = usePathname();
@@ -50,7 +51,7 @@ export default function CheckinPage() {
       <h1>Daily Check-in</h1>
       <p>Complete your daily check-in in under 10 seconds.</p>
       <p>Use neutral wording only and avoid entering highly sensitive personal details.</p>
-      <CheckinForm />
+      <CheckinForm onSubmitSuccess={() => trackClientEvent("checkin_submitted")} />
     </main>
   );
 }

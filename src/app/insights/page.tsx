@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { buildLoginHref, isLoggedIn } from "@/lib/auth/client-auth";
+import { trackClientEvent } from "@/lib/metrics/client-events";
 
 type WeeklyInsight = {
   summary: string;
@@ -93,6 +94,11 @@ export default function WeeklyInsightsPage() {
         const normalized = normalizeInsightsPayload(payload);
         if (active) {
           setInsight(normalized);
+          if (normalized) {
+            trackClientEvent("insights_viewed", {
+              suggestionCount: normalized.suggestions.length
+            });
+          }
         }
       } catch {
         if (active) {

@@ -9,6 +9,7 @@ import {
   type ReminderDeliveryStatus,
   type ReminderStatusItem
 } from "@/components/reminder-status-list";
+import { trackClientEvent } from "@/lib/metrics/client-events";
 
 type ReminderSettings = {
   reminderTime: string;
@@ -257,6 +258,10 @@ export default function SettingsPage() {
       }
 
       setSuccess("Settings saved.");
+      trackClientEvent("settings_saved", {
+        timezone: settings.timezone,
+        enabled: settings.enabled
+      });
     } catch {
       setError("Unable to save settings.");
     } finally {
