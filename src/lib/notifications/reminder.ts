@@ -1,5 +1,7 @@
 export const REMINDER_CHANNEL = "in_app";
 export const REMINDER_TEMPLATE = "daily_reminder";
+export const REMINDER_STATUS_VALUES = ["sent", "failed", "pending"] as const;
+export type ReminderStatus = (typeof REMINDER_STATUS_VALUES)[number];
 
 export type ReminderPreference = {
   userId: string;
@@ -71,4 +73,15 @@ export function getCurrentUtcHourWindow(now: Date) {
   const end = new Date(start);
   end.setUTCHours(end.getUTCHours() + 1);
   return { start, end };
+}
+
+export function normalizeReminderStatus(value: unknown): ReminderStatus | null {
+  if (value === "sent" || value === "failed" || value === "pending") {
+    return value;
+  }
+  return null;
+}
+
+export function getSinceDate(now: Date, hours: number) {
+  return new Date(now.getTime() - hours * 60 * 60 * 1000);
 }

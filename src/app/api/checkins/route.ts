@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateCheckinInput } from "@/lib/validation/checkin";
 import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
+import { trackMetricEvent } from "@/lib/metrics/events";
 
 const toUtcDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -44,6 +45,16 @@ export async function POST(request: Request) {
         stress: validated.data.stress,
         social: validated.data.social,
         keyContact: validated.data.key_contact
+      }
+    });
+
+    await trackMetricEvent({
+      event: "checkin.create",
+      actorId: userId,
+      status: "success",
+      target: userId,
+      properties: {
+        date: validated.data.date
       }
     });
 

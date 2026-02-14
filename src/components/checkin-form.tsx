@@ -25,7 +25,11 @@ function validateRange(name: string, value: string): string | null {
   return null;
 }
 
-export function CheckinForm() {
+type Props = {
+  onSubmitSuccess?: () => void;
+};
+
+export function CheckinForm({ onSubmitSuccess }: Props) {
   const [form, setForm] = useState<FormState>(initialState);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
@@ -78,6 +82,7 @@ export function CheckinForm() {
 
       setSuccess("Check-in submitted successfully.");
       setForm(initialState);
+      onSubmitSuccess?.();
     } catch {
       setError("Unable to submit check-in.");
     } finally {

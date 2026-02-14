@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSessionUserId, unauthorizedResponse } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit/log";
 import { checkRateLimit, getRateLimitConfig } from "@/lib/security/rate-limit";
+import { trackMetricEvent } from "@/lib/metrics/events";
 
 const NOT_FOUND_ERROR = {
   error: {
@@ -49,6 +50,12 @@ async function handleDelete(request: Request) {
       where: { id: userId }
     });
 
+    await trackMetricEvent({
+      event: "account.delete",
+      actorId: userId,
+      status: "success",
+      target: userId
+    });
     await writeAuditLog({
       action: "account.delete",
       actorId: userId,
