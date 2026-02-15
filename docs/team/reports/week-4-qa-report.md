@@ -28,8 +28,8 @@
 | ID | Severity | Area | Title | Status |
 |---|---|---|---|---|
 | W4-DEF-P1-001 | Minor | E2E selector | Weekly insights error-state assertion conflicted with Next route announcer `role=alert` | Fixed |
-| W4-RISK-P0-001 | Minor | API completeness | `GET/POST /api/settings/reminder` backend route absent in current baseline; P0 test keeps status API real and uses controlled settings stub | Open (Known Risk) |
-| W4-RISK-P1-002 | Minor | API completeness | `/api/insights/weekly` backend route absent in current baseline; P1 test validates UI states via controlled responses | Open (Known Risk) |
+| W4-RISK-P0-001 | Minor | API completeness | `GET/POST /api/settings/reminder` backend route verified present; API tests pass in current baseline | Closed - Verified |
+| W4-RISK-P1-002 | Minor | API completeness | `/api/insights/weekly` backend route verified present; API and contract tests pass in current baseline | Closed - Verified |
 
 ## 4. Go / No-Go
 - Recommendation: **Go**
