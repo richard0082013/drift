@@ -21,10 +21,17 @@ export function validateCheckinInput(payload: unknown):
     return { ok: false, message: "date is required in ISO format." };
   }
 
-  for (const key of ["energy", "stress", "social"] as const) {
-    if (typeof candidate[key] !== "number" || !isOneToFive(candidate[key])) {
-      return { ok: false, message: `${key} must be an integer between 1 and 5.` };
-    }
+  const energy = candidate.energy;
+  if (typeof energy !== "number" || !isOneToFive(energy)) {
+    return { ok: false, message: "energy must be an integer between 1 and 5." };
+  }
+  const stress = candidate.stress;
+  if (typeof stress !== "number" || !isOneToFive(stress)) {
+    return { ok: false, message: "stress must be an integer between 1 and 5." };
+  }
+  const social = candidate.social;
+  if (typeof social !== "number" || !isOneToFive(social)) {
+    return { ok: false, message: "social must be an integer between 1 and 5." };
   }
 
   if (candidate.key_contact != null && typeof candidate.key_contact !== "string") {
@@ -35,9 +42,9 @@ export function validateCheckinInput(payload: unknown):
     ok: true,
     data: {
       date: candidate.date,
-      energy: candidate.energy,
-      stress: candidate.stress,
-      social: candidate.social,
+      energy,
+      stress,
+      social,
       key_contact: candidate.key_contact as string | undefined
     }
   };
