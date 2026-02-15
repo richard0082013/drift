@@ -71,7 +71,7 @@ describe("auth gating", () => {
     render(<CheckinPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("今日未打卡，请填写。")).toBeInTheDocument();
+      expect(screen.getByText("You haven't checked in today.")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Submit Check-in" })).toBeInTheDocument();
     });
   });
@@ -109,7 +109,7 @@ describe("auth gating", () => {
     render(<CheckinPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("今日已打卡（energy/stress/social）：4/3/5")).toBeInTheDocument();
+      expect(screen.getByText("Checked in today (energy/stress/social):4/3/5")).toBeInTheDocument();
     });
     expect(screen.queryByRole("button", { name: "Submit Check-in" })).not.toBeInTheDocument();
   });
@@ -161,7 +161,7 @@ describe("auth gating", () => {
     fireEvent.click(screen.getByRole("button", { name: "Submit Check-in" }));
 
     await waitFor(() => {
-      expect(screen.getByText("今日已打卡（energy/stress/social）：3/2/4")).toBeInTheDocument();
+      expect(screen.getByText("Checked in today (energy/stress/social):3/2/4")).toBeInTheDocument();
     });
     expect(screen.queryByRole("button", { name: "Submit Check-in" })).not.toBeInTheDocument();
   });

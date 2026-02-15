@@ -144,7 +144,7 @@ export default function CheckinPage() {
       {!loadingToday && !todayError && !todayCheckin ? (
         <Card>
           <CardHeader>
-            <p className="text-sm text-slate-600">今日未打卡，请填写。</p>
+            <p className="text-sm text-slate-600">You haven't checked in today.</p>
           </CardHeader>
           <CardBody>
             <CheckinForm
@@ -165,7 +165,7 @@ export default function CheckinPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
               <p className="text-sm font-medium text-sage-700">
-                今日已打卡（energy/stress/social）：{todayCheckin.energy}/{todayCheckin.stress}/{todayCheckin.social}
+                Checked in today (energy/stress/social):{todayCheckin.energy}/{todayCheckin.stress}/{todayCheckin.social}
               </p>
             </div>
             <div className="flex gap-3">

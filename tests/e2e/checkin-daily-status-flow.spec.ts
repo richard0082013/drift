@@ -21,7 +21,7 @@ test("daily checkin status flow persists today state", async ({ page }) => {
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(page).toHaveURL("http://127.0.0.1:3000/checkin");
-    await expect(page.getByText("今日未打卡，请填写。")).toBeVisible();
+    await expect(page.getByText("You haven't checked in today.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Submit Check-in" })).toBeVisible();
     await page.screenshot({ path: "test-results/milestone-a-step2-not-checked-in.png", fullPage: true });
 
@@ -30,13 +30,13 @@ test("daily checkin status flow persists today state", async ({ page }) => {
     await page.getByLabel("Social (1-5)").fill("2");
     await page.getByRole("button", { name: "Submit Check-in" }).click();
 
-    await expect(page.getByText("今日已打卡（energy/stress/social）：4/3/2")).toBeVisible();
+    await expect(page.getByText("Checked in today (energy/stress/social):4/3/2")).toBeVisible();
     await expect(page.getByRole("button", { name: "Submit Check-in" })).toHaveCount(0);
     await page.screenshot({ path: "test-results/milestone-a-step3-checked-in-after-submit.png", fullPage: true });
 
     await page.reload();
 
-    await expect(page.getByText("今日已打卡（energy/stress/social）：4/3/2")).toBeVisible();
+    await expect(page.getByText("Checked in today (energy/stress/social):4/3/2")).toBeVisible();
     await expect(page.getByRole("button", { name: "Submit Check-in" })).toHaveCount(0);
     await page.screenshot({ path: "test-results/milestone-a-step4-checked-in-after-refresh.png", fullPage: true });
   } finally {
