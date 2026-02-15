@@ -1,11 +1,12 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 type MetricEventPayload = {
   event: string;
   actorId: string;
   status: "success" | "failed" | "rate_limited";
   target?: string;
-  properties?: Record<string, unknown>;
+  properties?: Prisma.InputJsonObject;
 };
 
 export async function trackMetricEvent(payload: MetricEventPayload) {

@@ -1,11 +1,11 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loginWithSession, sanitizeNextPath } from "@/lib/auth/client-auth";
 import { ErrorState } from "@/components/page-feedback";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("demo@drift.local");
@@ -65,5 +65,13 @@ export default function LoginPage() {
       </form>
       {error ? <ErrorState message={error} /> : null}
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main><h1>Login</h1><p>Loading...</p></main>}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

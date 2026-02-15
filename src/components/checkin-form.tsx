@@ -25,8 +25,24 @@ function validateRange(name: string, value: string): string | null {
   return null;
 }
 
+function normalizeSubmitErrorMessage(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) {
+    return "Unable to submit check-in.";
+  }
+
+  if (/INTERNAL_ERROR/i.test(value)) {
+    return "Unable to submit check-in.";
+  }
+
+  return value;
+}
+
 type Props = {
-  onSubmitSuccess?: () => void;
+  onSubmitSuccess?: (checkin: {
+    energy: number;
+    stress: number;
+    social: number;
+  }) => void;
 };
 
 export function CheckinForm({ onSubmitSuccess }: Props) {
@@ -76,13 +92,17 @@ export function CheckinForm({ onSubmitSuccess }: Props) {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error?.message ?? "Unable to submit check-in.");
+        setError(normalizeSubmitErrorMessage(data.error?.message));
         return;
       }
 
       setSuccess("Check-in submitted successfully.");
       setForm(initialState);
-      onSubmitSuccess?.();
+      onSubmitSuccess?.({
+        energy: data.checkin?.energy ?? Number(form.energy),
+        stress: data.checkin?.stress ?? Number(form.stress),
+        social: data.checkin?.social ?? Number(form.social)
+      });
     } catch {
       setError("Unable to submit check-in.");
     } finally {

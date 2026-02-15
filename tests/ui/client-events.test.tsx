@@ -32,6 +32,12 @@ describe("client events", () => {
         })
       )
       .mockResolvedValueOnce(
+        new Response(JSON.stringify({ checkedInToday: false, checkin: null }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
         new Response(JSON.stringify({ checkin: { id: "c1" } }), {
           status: 201,
           headers: { "content-type": "application/json" }

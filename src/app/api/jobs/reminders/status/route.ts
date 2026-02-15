@@ -18,6 +18,7 @@ type StatusItem = {
   channel: string;
   source: "notification_log" | "computed_pending";
 };
+type NotificationLogStatusItem = Extract<StatusItem, { source: "notification_log" }>;
 
 function parseQueryNumber(value: string | null, fallback: number, min: number, max: number) {
   const parsed = Number(value ?? fallback);
@@ -104,7 +105,7 @@ export async function GET(request: Request) {
         source: "notification_log" as const
       };
     })
-    .filter((item): item is StatusItem => item !== null);
+    .filter((item): item is NotificationLogStatusItem => item !== null);
 
   if (preference) {
     const candidate: ReminderPreference = {

@@ -1,11 +1,12 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 type AuditPayload = {
   action: string;
   actorId: string;
   status: "success" | "failed" | "rate_limited";
   target?: string;
-  meta?: Record<string, unknown>;
+  meta?: Prisma.InputJsonObject;
 };
 
 const AUDIT_SCHEMA_VERSION = "audit.v2";
