@@ -44,6 +44,128 @@ describe("auth gating", () => {
     );
   });
 
+  it("shows not-checked-in state with form for authenticated users", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input.url;
+
+      if (url === "/api/auth/session") {
+        return new Response(JSON.stringify({ session: { userId: "u1" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      if (url === "/api/checkins/today") {
+        return new Response(JSON.stringify({ checkedInToday: false, checkin: null }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: { message: "unexpected request" } }), {
+        status: 500,
+        headers: { "content-type": "application/json" }
+      });
+    });
+
+    render(<CheckinPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("今日未打卡，请填写。")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Submit Check-in" })).toBeInTheDocument();
+    });
+  });
+
+  it("shows checked-in summary and hides form when already submitted", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input.url;
+
+      if (url === "/api/auth/session") {
+        return new Response(JSON.stringify({ session: { userId: "u1" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      if (url === "/api/checkins/today") {
+        return new Response(
+          JSON.stringify({
+            checkedInToday: true,
+            checkin: { energy: 4, stress: 3, social: 5 }
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          }
+        );
+      }
+
+      return new Response(JSON.stringify({ error: { message: "unexpected request" } }), {
+        status: 500,
+        headers: { "content-type": "application/json" }
+      });
+    });
+
+    render(<CheckinPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("今日已打卡（energy/stress/social）：4/3/5")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: "Submit Check-in" })).not.toBeInTheDocument();
+  });
+
+  it("switches to checked-in state immediately after successful submit", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.url;
+      const method = (init?.method ?? "GET").toUpperCase();
+
+      if (url === "/api/auth/session") {
+        return new Response(JSON.stringify({ session: { userId: "u1" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      if (url === "/api/checkins/today") {
+        return new Response(JSON.stringify({ checkedInToday: false, checkin: null }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      if (url === "/api/checkins" && method === "POST") {
+        return new Response(
+          JSON.stringify({ checkin: { id: "c1", energy: 3, stress: 2, social: 4 } }),
+          {
+            status: 201,
+            headers: { "content-type": "application/json" }
+          }
+        );
+      }
+
+      return new Response(JSON.stringify({ error: { message: "unexpected request" } }), {
+        status: 500,
+        headers: { "content-type": "application/json" }
+      });
+    });
+
+    render(<CheckinPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Submit Check-in" })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Energy (1-5)"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Stress (1-5)"), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("Social (1-5)"), { target: { value: "4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit Check-in" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("今日已打卡（energy/stress/social）：3/2/4")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: "Submit Check-in" })).not.toBeInTheDocument();
+  });
+
   it("blocks trends loading when unauthenticated", async () => {
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ error: { code: "UNAUTHORIZED" } }), {
