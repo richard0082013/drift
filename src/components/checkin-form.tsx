@@ -66,7 +66,7 @@ function ScaleInput({ label, ariaLabel, value, onChange, activeColor }: ScaleInp
               key={n}
               type="button"
               className={[
-                "w-10 h-10 rounded-full text-sm font-semibold transition-all duration-200 cursor-pointer",
+                "w-11 h-11 rounded-full text-sm font-semibold transition-all duration-200 cursor-pointer",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-coral-300",
                 numValue === n
                   ? `${activeColor} text-white shadow-md scale-110`
@@ -210,7 +210,7 @@ export function CheckinForm({ onSubmitSuccess }: Props) {
 
       {error ? <p role="alert" className="text-sm text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">{error}</p> : null}
       {success ? (
-        <div className="flex items-center gap-2 text-sm text-sage-600 bg-sage-50 px-3 py-2 rounded-lg">
+        <div className="flex items-center gap-2 text-sm text-sage-600 bg-sage-50 px-3 py-2 rounded-lg animate-success-pop">
           <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>

@@ -31,7 +31,7 @@ export default function HomePage() {
       {/* Feature Highlights */}
       <section className="grid gap-4 sm:grid-cols-3">
         {/* Card 1: Check-in */}
-        <div className="rounded-xl border border-cream-200 bg-white p-6 shadow-card text-center space-y-2">
+        <div className="rounded-xl border border-cream-200 bg-white p-6 shadow-card text-center space-y-2 card-interactive">
           <div className="mx-auto w-10 h-10 rounded-full bg-coral-50 flex items-center justify-center">
             <svg className="w-5 h-5 text-coral-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -42,7 +42,7 @@ export default function HomePage() {
         </div>
 
         {/* Card 2: Trends */}
-        <div className="rounded-xl border border-cream-200 bg-white p-6 shadow-card text-center space-y-2">
+        <div className="rounded-xl border border-cream-200 bg-white p-6 shadow-card text-center space-y-2 card-interactive">
           <div className="mx-auto w-10 h-10 rounded-full bg-sage-50 flex items-center justify-center">
             <svg className="w-5 h-5 text-sage-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v-5.5" />
@@ -53,7 +53,7 @@ export default function HomePage() {
         </div>
 
         {/* Card 3: Alerts */}
-        <div className="rounded-xl border border-cream-200 bg-white p-6 shadow-card text-center space-y-2">
+        <div className="rounded-xl border border-cream-200 bg-white p-6 shadow-card text-center space-y-2 card-interactive">
           <div className="mx-auto w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
             <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
