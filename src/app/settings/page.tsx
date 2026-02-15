@@ -10,6 +10,8 @@ import {
 } from "@/components/reminder-status-list";
 import { AuthRequiredState, ErrorState, LoadingState } from "@/components/page-feedback";
 import { trackClientEvent } from "@/lib/metrics/client-events";
+import { Card, CardBody } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type ReminderSettings = {
   reminderTime: string;
@@ -292,54 +294,102 @@ export default function SettingsPage() {
 
   if (!authenticated) {
     return (
-      <main>
-        <h1>Reminder Settings</h1>
+      <main className="space-y-6">
+        <h1 className="text-2xl font-heading font-bold text-slate-800">Reminder Settings</h1>
         <AuthRequiredState loginHref={buildLoginHref(pathname ?? "/settings", "/settings")} />
       </main>
     );
   }
 
   return (
-    <main>
-      <h1>Reminder Settings</h1>
-      <p>Set reminder time, timezone, and notification preference.</p>
-      {loading ? <LoadingState /> : null}
-      <form onSubmit={onSubmit}>
-        <label>
-          Reminder Time
-          <input
-            aria-label="Reminder Time"
-            type="time"
-            value={settings.reminderTime}
-            onChange={(event) =>
-              setSettings((prev) => ({ ...prev, reminderTime: event.target.value }))
-            }
-          />
-        </label>
-        <label>
-          Timezone
-          <input
-            aria-label="Timezone"
-            value={settings.timezone}
-            onChange={(event) => setSettings((prev) => ({ ...prev, timezone: event.target.value }))}
-          />
-        </label>
-        <label>
-          Enable Reminders
-          <input
-            aria-label="Enable Reminders"
-            type="checkbox"
-            checked={settings.enabled}
-            onChange={(event) => setSettings((prev) => ({ ...prev, enabled: event.target.checked }))}
-          />
-        </label>
-        <button type="submit" disabled={saving}>
-          {saving ? "Submitting..." : "Save Settings"}
-        </button>
-      </form>
-      <ReminderStatusList items={statusItems} loading={statusLoading} error={statusError} />
+    <main className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-heading font-bold text-slate-800">Reminder Settings</h1>
+        <p className="mt-1 text-sm font-body text-slate-600">
+          Set reminder time, timezone, and notification preference.
+        </p>
+      </div>
+
+      {loading ? (
+        <LoadingState />
+      ) : (
+        <Card>
+          <CardBody>
+            <form onSubmit={onSubmit} className="space-y-5">
+              <div className="space-y-1">
+                <label htmlFor="reminder-time" className="block text-sm font-medium text-slate-600">
+                  Reminder Time
+                </label>
+                <input
+                  id="reminder-time"
+                  aria-label="Reminder Time"
+                  type="time"
+                  value={settings.reminderTime}
+                  onChange={(event) =>
+                    setSettings((prev) => ({ ...prev, reminderTime: event.target.value }))
+                  }
+                  className="w-full rounded-lg border border-cream-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-coral-500 focus:ring-1 focus:ring-coral-500 outline-none transition-colors"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="timezone" className="block text-sm font-medium text-slate-600">
+                  Timezone
+                </label>
+                <input
+                  id="timezone"
+                  aria-label="Timezone"
+                  value={settings.timezone}
+                  onChange={(event) =>
+                    setSettings((prev) => ({ ...prev, timezone: event.target.value }))
+                  }
+                  className="w-full rounded-lg border border-cream-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-coral-500 focus:ring-1 focus:ring-coral-500 outline-none transition-colors"
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  id="enable-reminders"
+                  aria-label="Enable Reminders"
+                  type="checkbox"
+                  checked={settings.enabled}
+                  onChange={(event) =>
+                    setSettings((prev) => ({ ...prev, enabled: event.target.checked }))
+                  }
+                  className="h-5 w-5 rounded border-cream-200 text-coral-500 focus:ring-coral-500"
+                />
+                <label htmlFor="enable-reminders" className="text-sm font-medium text-slate-700">
+                  Enable Reminders
+                </label>
+              </div>
+
+              <Button type="submit" disabled={saving}>
+                {saving ? "Submitting..." : "Save Settings"}
+              </Button>
+            </form>
+          </CardBody>
+        </Card>
+      )}
+
       {error ? <ErrorState message={error} /> : null}
-      {success ? <p>{success}</p> : null}
+
+      {success ? (
+        <div className="flex items-center gap-2 rounded-lg bg-sage-500/10 px-4 py-3">
+          <svg
+            className="h-5 w-5 shrink-0 text-sage-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+          <p className="text-sm font-medium text-sage-500">{success}</p>
+        </div>
+      ) : null}
+
+      <ReminderStatusList items={statusItems} loading={statusLoading} error={statusError} />
     </main>
   );
 }

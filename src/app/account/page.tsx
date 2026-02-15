@@ -8,6 +8,8 @@ import {
   ErrorState,
   LoadingState
 } from "@/components/page-feedback";
+import { Card, CardHeader, CardBody } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type ExportMetadata = {
   generatedAt: string;
@@ -140,64 +142,75 @@ export default function AccountPage() {
 
   if (!authenticated) {
     return (
-      <main>
-        <h1>Account</h1>
+      <main className="space-y-4">
+        <h1 className="text-2xl font-heading font-bold text-slate-800">Account</h1>
         <AuthRequiredState loginHref={buildLoginHref(pathname ?? "/account", "/account")} />
       </main>
     );
   }
 
   return (
-    <main>
-      <h1>Account</h1>
-      <p>Use this page to export your data and manage deletion requests.</p>
+    <main className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-heading font-bold text-slate-800">Account</h1>
+        <p className="text-slate-500 text-sm">Use this page to export your data and manage deletion requests.</p>
+      </div>
 
-      <section>
-        <h2>Export Data</h2>
-        <button type="button" onClick={onExport} disabled={exporting}>
-          {exporting ? "Submitting..." : "Export my data"}
-        </button>
-        {exportMetadata ? (
-          <dl>
-            <dt>Generated at</dt>
-            <dd>{exportMetadata.generatedAt}</dd>
-            <dt>Record count</dt>
-            <dd>{exportMetadata.recordCount}</dd>
-            <dt>Version</dt>
-            <dd>{exportMetadata.version}</dd>
-          </dl>
-        ) : null}
-      </section>
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-heading font-semibold text-slate-700">Export Data</h2>
+        </CardHeader>
+        <CardBody>
+          <Button variant="secondary" type="button" onClick={onExport} disabled={exporting}>
+            {exporting ? "Submitting..." : "Export my data"}
+          </Button>
+          {exportMetadata ? (
+            <dl className="grid grid-cols-2 gap-2 text-sm mt-3">
+              <dt className="text-slate-500">Generated at</dt>
+              <dd className="text-slate-700 font-medium">{exportMetadata.generatedAt}</dd>
+              <dt className="text-slate-500">Record count</dt>
+              <dd className="text-slate-700 font-medium">{exportMetadata.recordCount}</dd>
+              <dt className="text-slate-500">Version</dt>
+              <dd className="text-slate-700 font-medium">{exportMetadata.version}</dd>
+            </dl>
+          ) : null}
+        </CardBody>
+      </Card>
 
-      <section>
-        <h2>Delete Account</h2>
-        <p>Deletion is soft-first. Your account enters a retention window before permanent purge.</p>
-        {!confirmArmed ? (
-          <button type="button" onClick={onArmDelete}>
-            Start delete confirmation
-          </button>
-        ) : null}
-        {confirmArmed && countdown > 0 ? (
-          <p>Delete confirmation unlocks in {countdown}s.</p>
-        ) : null}
-        <form onSubmit={onDelete}>
-          <label>
-            Type DELETE to confirm
-            <input
-              aria-label="Type DELETE to confirm"
-              value={confirmText}
-              onChange={(event) => setConfirmText(event.target.value)}
-            />
-          </label>
-          <button type="submit" disabled={!canDelete || deleting}>
-            {deleting ? "Submitting..." : "Delete account"}
-          </button>
-        </form>
-      </section>
+      <Card className="border-rose-200">
+        <CardHeader>
+          <h2 className="text-lg font-heading font-semibold text-rose-600">Delete Account</h2>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          <p className="text-sm text-slate-600">Deletion is soft-first. Your account enters a retention window before permanent purge.</p>
+          {!confirmArmed ? (
+            <Button variant="danger" type="button" onClick={onArmDelete}>
+              Start delete confirmation
+            </Button>
+          ) : null}
+          {confirmArmed && countdown > 0 ? (
+            <p className="text-sm text-amber-500 font-medium">Delete confirmation unlocks in {countdown}s.</p>
+          ) : null}
+          <form onSubmit={onDelete} className="space-y-3">
+            <label className="block text-sm text-slate-600">
+              Type DELETE to confirm
+              <input
+                aria-label="Type DELETE to confirm"
+                className="w-full rounded-lg border border-cream-200 bg-white px-3 py-2 text-sm mt-1 block"
+                value={confirmText}
+                onChange={(event) => setConfirmText(event.target.value)}
+              />
+            </label>
+            <Button variant="danger" type="submit" disabled={!canDelete || deleting}>
+              {deleting ? "Submitting..." : "Delete account"}
+            </Button>
+          </form>
+        </CardBody>
+      </Card>
 
       {error ? <ErrorState message={error} /> : null}
-      {success ? <p>{success}</p> : null}
-      <p>If you need to restore access during the retention window, contact support.</p>
+      {success ? <p className="text-sm text-sage-500 font-medium">{success}</p> : null}
+      <p className="text-xs text-slate-400 mt-4">If you need to restore access during the retention window, contact support.</p>
     </main>
   );
 }

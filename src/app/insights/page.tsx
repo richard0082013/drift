@@ -9,6 +9,9 @@ import {
 } from "@/lib/auth/client-auth";
 import { trackClientEvent } from "@/lib/metrics/client-events";
 import { AuthRequiredState, ErrorState, LoadingState } from "@/components/page-feedback";
+import { Card, CardHeader, CardBody } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 type WeeklyInsights = {
   weekStart: string;
@@ -195,70 +198,146 @@ export default function InsightsPage() {
   }, [authenticated, days]);
 
   if (!authChecked) {
-    return <main><LoadingState /></main>;
+    return (
+      <main className="space-y-4">
+        <h1 className="text-2xl font-heading font-bold text-slate-800">Weekly Insights</h1>
+        <LoadingState />
+      </main>
+    );
   }
 
   if (!authenticated) {
     return (
-      <main>
-        <h1>Weekly Insights</h1>
+      <main className="space-y-4">
+        <h1 className="text-2xl font-heading font-bold text-slate-800">Weekly Insights</h1>
         <AuthRequiredState loginHref={buildLoginHref(pathname ?? "/insights", "/insights")} />
       </main>
     );
   }
 
+  const metricBarColor = (label: string) => {
+    switch (label) {
+      case "Energy": return "bg-sage-500";
+      case "Stress": return "bg-amber-500";
+      case "Social": return "bg-coral-500";
+      case "DriftIndex": return "bg-rose-500";
+      default: return "bg-slate-400";
+    }
+  };
+
+  const metrics: { label: string; value: number | null }[] = [
+    { label: "Energy", value: insights?.summary.averages.energy ?? null },
+    { label: "Stress", value: insights?.summary.averages.stress ?? null },
+    { label: "Social", value: insights?.summary.averages.social ?? null },
+    { label: "DriftIndex", value: insights?.summary.averages.driftIndex ?? null },
+  ];
+
   return (
-    <main>
-      <h1>Weekly Insights</h1>
-      <p>Review trend quality and risk level from the real weekly insights API.</p>
+    <main className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-heading font-bold text-slate-800">Weekly Insights</h1>
+        <p className="text-slate-500 text-sm">Review trend quality and risk level from the real weekly insights API.</p>
+      </div>
 
       <section aria-label="Range picker">
-        <button type="button" aria-pressed={days === 7} onClick={() => setDays(7)}>7 days</button>
-        <button type="button" aria-pressed={days === 14} onClick={() => setDays(14)}>14 days</button>
+        <div className="flex gap-2">
+          <Button type="button" variant={days === 7 ? "primary" : "secondary"} size="sm" aria-pressed={days === 7} onClick={() => setDays(7)}>7 days</Button>
+          <Button type="button" variant={days === 14 ? "primary" : "secondary"} size="sm" aria-pressed={days === 14} onClick={() => setDays(14)}>14 days</Button>
+        </div>
       </section>
 
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
 
       {!loading && !error && insights ? (
-        <section>
-          <p>
-            Window: <strong>{insights.weekStart}</strong> to <strong>{insights.weekEnd}</strong>
-          </p>
-          <p>
-            Check-ins: {insights.summary.checkinCount} | Alerts: {insights.summary.alertCount} | Drift: {insights.summary.driftLevel}
-          </p>
-          <p>
-            Averages - Energy: {formatMetric(insights.summary.averages.energy)}, Stress: {formatMetric(insights.summary.averages.stress)}, Social: {formatMetric(insights.summary.averages.social)}, DriftIndex: {formatMetric(insights.summary.averages.driftIndex)}
-          </p>
+        <section className="space-y-6">
+          <Card>
+            <CardHeader>
+              <p className="text-sm text-slate-600">
+                Window: <strong className="text-slate-800">{insights.weekStart}</strong> to <strong className="text-slate-800">{insights.weekEnd}</strong>
+              </p>
+            </CardHeader>
+            <CardBody className="space-y-4">
+              <p className="text-sm font-body text-slate-700">
+                Check-ins: {insights.summary.checkinCount} | Alerts: {insights.summary.alertCount} | Drift: {insights.summary.driftLevel}
+                <Badge variant={insights.summary.driftLevel} className="ml-2">{insights.summary.driftLevel}</Badge>
+              </p>
+
+              <div>
+                <p className="text-sm font-body text-slate-700">
+                  Averages - Energy: {formatMetric(insights.summary.averages.energy)}, Stress: {formatMetric(insights.summary.averages.stress)}, Social: {formatMetric(insights.summary.averages.social)}, DriftIndex: {formatMetric(insights.summary.averages.driftIndex)}
+                </p>
+                <div className="mt-3 space-y-2">
+                  {metrics.map((m) => (
+                    <div key={m.label} className="flex items-center gap-3">
+                      <span className="text-xs font-body text-slate-500 w-20 text-right">{m.label}</span>
+                      <div className="flex-1 h-2 bg-cream-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${metricBarColor(m.label)}`}
+                          style={{ width: m.value !== null ? `${(m.value / 5) * 100}%` : "0%" }}
+                        />
+                      </div>
+                      <span className="text-xs font-body text-slate-600 w-8">{formatMetric(m.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardBody>
+          </Card>
 
           {insights.highlights.length > 0 ? (
-            <>
-              <h2>Highlights</h2>
-              <ul>
-                {insights.highlights.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </>
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-heading font-semibold text-slate-700">Highlights</h2>
+              </CardHeader>
+              <CardBody>
+                <ul className="space-y-2">
+                  {insights.highlights.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm font-body text-slate-700">
+                      <span className="mt-1.5 block h-2 w-2 shrink-0 rounded-full bg-sage-500" aria-hidden="true" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </CardBody>
+            </Card>
           ) : null}
 
           {insights.suggestions.length > 0 ? (
-            <>
-              <h2>Suggestions</h2>
-              <ul>
-                {insights.suggestions.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </>
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-heading font-semibold text-slate-700">Suggestions</h2>
+              </CardHeader>
+              <CardBody>
+                <ul className="space-y-2">
+                  {insights.suggestions.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm font-body text-slate-700">
+                      <span className="mt-1.5 block h-2 w-2 shrink-0 rounded-full bg-coral-500" aria-hidden="true" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </CardBody>
+            </Card>
           ) : null}
 
-          {!insights.summary.hasEnoughData ? <p>Not enough data yet to derive stable trends.</p> : null}
+          {!insights.summary.hasEnoughData ? (
+            <Card className="border-amber-200 bg-amber-50">
+              <CardBody>
+                <p className="text-sm text-amber-700">Not enough data yet to derive stable trends.</p>
+              </CardBody>
+            </Card>
+          ) : null}
         </section>
       ) : null}
 
-      {!loading && !error && !insights ? <p>No weekly insights yet.</p> : null}
+      {!loading && !error && !insights ? (
+        <Card>
+          <CardBody className="py-8 text-center">
+            <p className="text-sm text-slate-500">No weekly insights yet.</p>
+          </CardBody>
+        </Card>
+      ) : null}
     </main>
   );
 }
