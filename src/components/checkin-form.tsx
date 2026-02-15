@@ -2,6 +2,7 @@
 
 import React, { FormEvent, useMemo, useState } from "react";
 import { buildSessionAuthorizationHeader } from "@/lib/auth/client-auth";
+import { Button } from "@/components/ui/button";
 
 type FormState = {
   energy: string;
@@ -35,6 +36,61 @@ function normalizeSubmitErrorMessage(value: unknown): string {
   }
 
   return value;
+}
+
+const scaleLabels = ["Very Low", "Low", "Moderate", "High", "Very High"];
+
+type ScaleInputProps = {
+  label: string;
+  ariaLabel: string;
+  value: string;
+  onChange: (value: string) => void;
+  activeColor: string;
+};
+
+function ScaleInput({ label, ariaLabel, value, onChange, activeColor }: ScaleInputProps) {
+  const numValue = Number(value) || 0;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-700">{label}</span>
+        {numValue > 0 ? (
+          <span className="text-xs text-slate-400">{scaleLabels[numValue - 1]}</span>
+        ) : null}
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={[
+                "w-10 h-10 rounded-full text-sm font-semibold transition-all duration-200 cursor-pointer",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-coral-300",
+                numValue === n
+                  ? `${activeColor} text-white shadow-md scale-110`
+                  : "bg-cream-100 text-slate-600 hover:scale-105"
+              ].join(" ")}
+              onClick={() => onChange(String(n))}
+              aria-label={`${label} ${n}`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <input
+          aria-label={ariaLabel}
+          type="number"
+          min={1}
+          max={5}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-12 h-8 text-center text-xs rounded-md border border-cream-200 bg-cream-50 text-slate-500 focus:outline-none focus:ring-2 focus:ring-coral-200"
+        />
+      </div>
+    </div>
+  );
 }
 
 type Props = {
@@ -111,44 +167,56 @@ export function CheckinForm({ onSubmitSuccess }: Props) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <label>
-        Energy (1-5)
+    <form onSubmit={onSubmit} className="space-y-5" noValidate>
+      <ScaleInput
+        label="Energy"
+        ariaLabel="Energy (1-5)"
+        value={form.energy}
+        onChange={(val) => setForm((prev) => ({ ...prev, energy: val }))}
+        activeColor="bg-coral-500"
+      />
+      <ScaleInput
+        label="Stress"
+        ariaLabel="Stress (1-5)"
+        value={form.stress}
+        onChange={(val) => setForm((prev) => ({ ...prev, stress: val }))}
+        activeColor="bg-rose-500"
+      />
+      <ScaleInput
+        label="Social"
+        ariaLabel="Social (1-5)"
+        value={form.social}
+        onChange={(val) => setForm((prev) => ({ ...prev, social: val }))}
+        activeColor="bg-sage-500"
+      />
+
+      <div className="space-y-1.5">
+        <label htmlFor="key-contact" className="text-sm font-medium text-slate-700">
+          Key Contact
+        </label>
         <input
-          aria-label="Energy (1-5)"
-          value={form.energy}
-          onChange={(e) => setForm((prev) => ({ ...prev, energy: e.target.value }))}
-        />
-      </label>
-      <label>
-        Stress (1-5)
-        <input
-          aria-label="Stress (1-5)"
-          value={form.stress}
-          onChange={(e) => setForm((prev) => ({ ...prev, stress: e.target.value }))}
-        />
-      </label>
-      <label>
-        Social (1-5)
-        <input
-          aria-label="Social (1-5)"
-          value={form.social}
-          onChange={(e) => setForm((prev) => ({ ...prev, social: e.target.value }))}
-        />
-      </label>
-      <label>
-        Key Contact
-        <input
+          id="key-contact"
           aria-label="Key Contact"
           value={form.key_contact}
           onChange={(e) => setForm((prev) => ({ ...prev, key_contact: e.target.value }))}
+          placeholder="Who did you connect with today?"
+          className="w-full px-3 py-2 rounded-lg text-sm text-slate-700 bg-white border border-cream-200 focus:outline-none focus:ring-2 focus:ring-coral-200 focus:border-coral-400 transition-colors duration-200 placeholder:text-slate-400"
         />
-      </label>
-      <button type="submit" disabled={submitting}>
+      </div>
+
+      <Button type="submit" disabled={submitting} className="w-full" size="lg">
         {submitting ? "Submitting..." : "Submit Check-in"}
-      </button>
-      {error ? <p role="alert">{error}</p> : null}
-      {success ? <p>{success}</p> : null}
+      </Button>
+
+      {error ? <p role="alert" className="text-sm text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">{error}</p> : null}
+      {success ? (
+        <div className="flex items-center gap-2 text-sm text-sage-600 bg-sage-50 px-3 py-2 rounded-lg">
+          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          <p>{success}</p>
+        </div>
+      ) : null}
     </form>
   );
 }
