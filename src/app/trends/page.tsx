@@ -181,16 +181,16 @@ export default function TrendsPage() {
 
   if (!authenticated) {
     return (
-      <main>
-        <h1>Trends</h1>
+      <main className="space-y-4">
+        <h1 className="text-2xl font-heading font-bold text-slate-800">Trends</h1>
         <AuthRequiredState loginHref={buildLoginHref(pathname ?? "/trends", "/trends")} />
       </main>
     );
   }
 
   return (
-    <main>
-      <h1>Trends</h1>
+    <main className="space-y-6">
+      <h1 className="text-2xl font-heading font-bold text-slate-800">Trends</h1>
       <TrendChart period={period} data={data} loading={loading} error={error} onPeriodChange={setPeriod} />
     </main>
   );

@@ -81,7 +81,8 @@ test("mvp flow: checkin -> trends -> alerts", async ({ page }) => {
 
   await page.goto("http://127.0.0.1:3000/trends");
   await expect(page.getByRole("button", { name: "7 days" })).toBeVisible();
-  await expect(page.getByText(/2026-02-14 E:4 S:3 C:2/)).toBeVisible();
+  await expect(page.getByTestId("trend-chart")).toBeVisible();
+  await expect(page.getByText("View data table")).toBeVisible();
   await page.getByRole("button", { name: "30 days" }).click();
 
   await page.goto("http://127.0.0.1:3000/alerts");

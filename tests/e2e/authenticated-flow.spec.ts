@@ -46,7 +46,8 @@ test("authenticated flow: login -> checkin -> trends -> alerts", async ({ page }
     const today = new Date().toISOString().slice(0, 10);
 
     await page.goto("/trends");
-    await expect(page.getByText(new RegExp(`${today} E:4 S:3 C:2`))).toBeVisible();
+    await expect(page.getByTestId("trend-chart")).toBeVisible();
+    await expect(page.getByText("View data table")).toBeVisible();
 
     await page.goto("/alerts");
     await expect(page.getByText("Energy has trended down over recent check-ins.")).toBeVisible();

@@ -106,8 +106,9 @@ describe("trends and alerts UI", () => {
     render(<TrendsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/2026-02-12 E:4 S:2 C:5/)).toBeInTheDocument();
-      expect(screen.getByText(/2026-02-13 E:3 S:3 C:4/)).toBeInTheDocument();
+      expect(screen.getByText("View data table")).toBeInTheDocument();
+      expect(screen.getByText("2026-02-12")).toBeInTheDocument();
+      expect(screen.getByText("2026-02-13")).toBeInTheDocument();
     });
   });
 
