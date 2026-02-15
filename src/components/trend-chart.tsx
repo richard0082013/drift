@@ -81,7 +81,7 @@ export function TrendChart({ period, data, loading, error, onPeriodChange }: Pro
         <Card>
           <CardBody>
             <div data-testid="trend-chart" className="w-full h-64">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#FFECD4" />
                   <XAxis

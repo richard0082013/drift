@@ -1,11 +1,26 @@
 import type { ReactNode } from "react";
+import { Lora, Raleway } from "next/font/google";
 import { NavBar } from "@/components/nav-bar";
 import Link from "next/link";
 import "./globals.css";
 
+const lora = Lora({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-heading",
+  display: "swap",
+});
+
+const raleway = Raleway({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-body",
+  display: "swap",
+});
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${lora.variable} ${raleway.variable}`}>
       <body className="min-h-screen bg-cream-50 flex flex-col">
         <NavBar />
         <main className="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-6">

@@ -1,50 +1,7 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { buildLoginHref, isLoggedIn } from "@/lib/auth/client-auth";
-import { AuthRequiredState, LoadingState } from "@/components/page-feedback";
 import { Card, CardBody } from "@/components/ui/card";
 
 export default function PrivacyPage() {
-  const pathname = usePathname();
-  const [authChecked, setAuthChecked] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-
-    async function resolveSession() {
-      const loggedIn = await isLoggedIn();
-      if (!active) {
-        return;
-      }
-
-      setAuthenticated(loggedIn);
-      setAuthChecked(true);
-    }
-
-    resolveSession();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  if (!authChecked) {
-    return <main><LoadingState /></main>;
-  }
-
-  if (!authenticated) {
-    return (
-      <main className="space-y-4">
-        <h1 className="text-2xl font-heading font-bold text-slate-800">Privacy</h1>
-        <AuthRequiredState loginHref={buildLoginHref(pathname ?? "/privacy", "/privacy")} />
-      </main>
-    );
-  }
-
   return (
     <main className="space-y-6">
       <h1 className="text-2xl font-heading font-bold text-slate-800">Privacy</h1>

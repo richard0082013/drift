@@ -29,19 +29,10 @@ describe("privacy and account actions", () => {
     vi.useRealTimers();
   });
 
-  it("shows non-medical disclaimer and account entry", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ session: { userId: "u1" } }), {
-        status: 200,
-        headers: { "content-type": "application/json" }
-      })
-    );
-
+  it("shows non-medical disclaimer and account entry", () => {
     render(<PrivacyPage />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/not a medical service/i)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/not a medical service/i)).toBeInTheDocument();
     expect(screen.getByText(/soft-delete retention window/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Go to account actions" })).toHaveAttribute(
       "href",

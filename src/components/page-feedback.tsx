@@ -101,7 +101,7 @@ export function AuthRequiredState({ loginHref }: AuthRequiredStateProps) {
             d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
           />
         </svg>
-        <ErrorState message="Please log in to continue." />
+        <p className="text-sm text-slate-600">Please log in to continue.</p>
         <Link
           href={loginHref}
           className="inline-flex items-center px-4 py-2 bg-coral-500 text-white text-sm font-medium rounded-lg hover:bg-coral-600 transition-colors duration-200 cursor-pointer"
