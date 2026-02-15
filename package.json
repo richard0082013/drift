@@ -11,8 +11,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
     "test:ui": "vitest tests/ui -r",
     "test:api": "vitest tests/api -r"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mjs"
   },
   "keywords": [],
   "author": "",
