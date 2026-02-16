@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { api } from "../lib/api";
 import { Card, CardBody, Button, Badge } from "../components/ui";
@@ -7,8 +9,11 @@ import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
 import { ProGate } from "../components/ProGate";
+import { useAuth } from "../lib/auth/AuthContext";
+import { useConversionTrigger } from "../lib/conversion/useConversionTrigger";
 import { colors } from "../config/theme";
 import type { ApiWeeklyInsights, DriftLevel } from "../types/api";
+import type { RootStackParamList } from "../navigation/RootNavigator";
 
 type Period = 7 | 14;
 
@@ -18,12 +23,18 @@ const DRIFT_BADGE_VARIANT: Record<DriftLevel, "low" | "moderate" | "high"> = {
   high: "high",
 };
 
+type RootNavProp = NativeStackNavigationProp<RootStackParamList>;
+
 export function InsightsScreen() {
   const [period, setPeriod] = useState<Period>(7);
   const [status, setStatus] = useState<"loading" | "error" | "empty" | "loaded">("loading");
   const [insights, setInsights] = useState<ApiWeeklyInsights | null>(null);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+
+  const navigation = useNavigation<RootNavProp>();
+  const { tier } = useAuth();
+  const { shouldShowPaywall, evaluate, dismiss } = useConversionTrigger();
 
   const fetchInsights = useCallback(async (p: Period) => {
     setStatus("loading");
@@ -34,16 +45,26 @@ export function InsightsScreen() {
       } else {
         setInsights(result.data);
         setStatus("loaded");
+        // Evaluate conversion triggers when we have data
+        evaluate(result.data.summary.checkinCount, tier);
       }
     } else {
       setError(result.error.message);
       setStatus("error");
     }
-  }, []);
+  }, [tier, evaluate]);
 
   useEffect(() => {
     fetchInsights(period);
   }, [period, fetchInsights]);
+
+  // Show paywall modal when conversion trigger fires
+  useEffect(() => {
+    if (shouldShowPaywall) {
+      navigation.navigate("Paywall", { source: "conversion_trigger" });
+      dismiss();
+    }
+  }, [shouldShowPaywall, navigation, dismiss]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

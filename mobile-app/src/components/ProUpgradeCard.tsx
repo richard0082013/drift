@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Card, CardBody, Button } from "./ui";
 import { colors } from "../config/theme";
+import type { RootStackParamList } from "../navigation/RootNavigator";
 
 type ProUpgradeCardProps = {
   feature: string;
@@ -17,8 +20,19 @@ const FEATURE_LABELS: Record<string, string> = {
   insight_history: "Insight History",
 };
 
+type RootNavProp = NativeStackNavigationProp<RootStackParamList>;
+
 export function ProUpgradeCard({ feature, onUpgrade }: ProUpgradeCardProps) {
+  const navigation = useNavigation<RootNavProp>();
   const label = FEATURE_LABELS[feature] ?? "This Feature";
+
+  const handleUpgrade = useCallback(() => {
+    if (onUpgrade) {
+      onUpgrade();
+    } else {
+      navigation.navigate("Paywall", { source: feature });
+    }
+  }, [onUpgrade, navigation, feature]);
 
   return (
     <Card style={styles.card}>
@@ -35,7 +49,7 @@ export function ProUpgradeCard({ feature, onUpgrade }: ProUpgradeCardProps) {
           variant="primary"
           size="md"
           title="Upgrade to Pro"
-          onPress={onUpgrade ?? (() => {})}
+          onPress={handleUpgrade}
           style={styles.button}
         />
       </CardBody>

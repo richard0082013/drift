@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions } from "react-native";
 import Svg, { Polyline, Circle, Line, Text as SvgText } from "react-native-svg";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { api } from "../lib/api";
-import { Card, CardBody, Button, Badge } from "../components/ui";
+import { Card, CardBody, Button } from "../components/ui";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
 import { ProGate } from "../components/ProGate";
 import { colors } from "../config/theme";
 import type { ApiTrendsResponse, ApiTrendPoint } from "../types/api";
+import type { RootStackParamList } from "../navigation/RootNavigator";
 
 type Period = 7 | 30;
 
+type RootNavProp = NativeStackNavigationProp<RootStackParamList>;
+
 export function TrendsScreen() {
+  const navigation = useNavigation<RootNavProp>();
   const [period, setPeriod] = useState<Period>(7);
   const [status, setStatus] = useState<"loading" | "error" | "empty" | "loaded">("loading");
   const [data, setData] = useState<ApiTrendPoint[]>([]);
@@ -67,7 +73,7 @@ export function TrendsScreen() {
           onPress={() => handlePeriodChange(7)}
         />
         <ProGate feature="trends_30d" fallback={
-          <Button title="30 Days 🔒" variant="secondary" size="sm" onPress={() => {}} />
+          <Button title="30 Days 🔒" variant="secondary" size="sm" onPress={() => navigation.navigate("Paywall", { source: "trends_30d" })} />
         }>
           <Button
             title="30 Days"

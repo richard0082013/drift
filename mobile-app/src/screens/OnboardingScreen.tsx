@@ -14,14 +14,14 @@ import { Button, Card, CardBody, SegmentedControl } from "../components/ui";
 import { colors } from "../config/theme";
 import type { ApiReminderSettingsResponse } from "../types/api";
 
-type OnboardingStep = "preferences" | "first-checkin" | "feedback";
+type OnboardingStep = "welcome" | "preferences" | "first-checkin" | "feedback";
 
 type OnboardingScreenProps = {
   onComplete: () => void;
 };
 
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
-  const [step, setStep] = useState<OnboardingStep>("preferences");
+  const [step, setStep] = useState<OnboardingStep>("welcome");
 
   return (
     <KeyboardAvoidingView
@@ -32,15 +32,20 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Progress */}
+        {/* Progress — 4 steps: welcome → preferences → first-checkin → feedback */}
         <View style={styles.progress}>
-          <ProgressDot active={step === "preferences"} completed={step !== "preferences"} />
+          <ProgressDot active={step === "welcome"} completed={step !== "welcome"} />
+          <View style={styles.progressLine} />
+          <ProgressDot active={step === "preferences"} completed={step === "first-checkin" || step === "feedback"} />
           <View style={styles.progressLine} />
           <ProgressDot active={step === "first-checkin"} completed={step === "feedback"} />
           <View style={styles.progressLine} />
           <ProgressDot active={step === "feedback"} completed={false} />
         </View>
 
+        {step === "welcome" && (
+          <PromiseStep onNext={() => setStep("preferences")} />
+        )}
         {step === "preferences" && (
           <PreferenceStep onNext={() => setStep("first-checkin")} />
         )}
@@ -52,6 +57,48 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         )}
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+// ── Step 0: Promise / Value Proposition ──
+
+function PromiseStep({ onNext }: { onNext: () => void }) {
+  return (
+    <View style={styles.stepContainer}>
+      <View style={styles.promiseHero}>
+        <Text style={styles.promiseEmoji}>🌊</Text>
+        <Text style={styles.stepTitle}>Welcome to Drift</Text>
+      </View>
+
+      <Text style={styles.stepSubtitle}>
+        A 30-second daily check-in that helps you spot emotional drift before it
+        becomes a problem.
+      </Text>
+
+      <View style={styles.promiseList}>
+        <PromiseItem icon="📊" text="Track energy, stress, and social connection" />
+        <PromiseItem icon="🔔" text="Get alerts when patterns shift" />
+        <PromiseItem icon="💡" text="Weekly insights to keep you balanced" />
+        <PromiseItem icon="🔒" text="Private by default — your data stays yours" />
+      </View>
+
+      <Button
+        title="Get Started"
+        variant="primary"
+        size="lg"
+        onPress={onNext}
+        style={styles.continueButton}
+      />
+    </View>
+  );
+}
+
+function PromiseItem({ icon, text }: { icon: string; text: string }) {
+  return (
+    <View style={styles.promiseItem}>
+      <Text style={styles.promiseItemIcon}>{icon}</Text>
+      <Text style={styles.promiseItemText}>{text}</Text>
+    </View>
   );
 }
 
@@ -352,6 +399,34 @@ const styles = StyleSheet.create({
 
   continueButton: {
     marginTop: 8,
+  },
+
+  // Promise
+  promiseHero: {
+    alignItems: "center",
+    gap: 12,
+  },
+  promiseEmoji: {
+    fontSize: 56,
+  },
+  promiseList: {
+    gap: 14,
+    paddingHorizontal: 8,
+  },
+  promiseItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  promiseItemIcon: {
+    fontSize: 20,
+  },
+  promiseItemText: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.slate[600],
+    fontFamily: "Raleway_500Medium",
+    lineHeight: 22,
   },
 
   // Feedback
