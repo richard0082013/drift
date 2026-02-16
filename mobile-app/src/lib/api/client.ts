@@ -10,7 +10,7 @@ import { getToken } from "../auth/session";
 import type { ApiErrorResponse } from "../../types/api";
 
 export type ApiResult<T> =
-  | { ok: true; data: T; status: number }
+  | { ok: true; data: T; status: number; headers?: Record<string, string> }
   | { ok: false; error: ApiErrorResponse["error"]; status: number };
 
 export interface ApiClient {
@@ -91,7 +91,11 @@ export class RealApiClient implements ApiClient {
       const data = isJson ? await res.json() : await res.text();
 
       if (res.ok) {
-        return { ok: true, data: data as T, status: res.status };
+        // Expose response headers for non-JSON responses (e.g. CSV export metadata)
+        const resHeaders: Record<string, string> | undefined = isJson
+          ? undefined
+          : Object.fromEntries(res.headers.entries());
+        return { ok: true, data: data as T, status: res.status, headers: resHeaders };
       }
 
       // 401 Unauthorized — token expired, trigger auto-logout

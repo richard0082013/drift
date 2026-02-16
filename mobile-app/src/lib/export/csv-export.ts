@@ -2,6 +2,8 @@
  * CSV Export Helper
  *
  * Downloads CSV from /api/export, saves to temp file, and presents Share Sheet.
+ * Reads authoritative metadata from response headers (x-export-*),
+ * falls back to client-side inference when headers are absent.
  * Uses Expo SDK 54 File/Paths API.
  */
 
@@ -16,7 +18,7 @@ export type ExportResult =
 
 /**
  * Fetches CSV export from backend and opens the Share Sheet.
- * Returns metadata (record count, generated-at) on success.
+ * Returns metadata (record count, generated-at, version) on success.
  */
 export async function exportAndShare(): Promise<ExportResult> {
   // Fetch CSV via the API client (returns text due to content-type awareness)
@@ -31,13 +33,15 @@ export async function exportAndShare(): Promise<ExportResult> {
     return { ok: false, error: "Export returned empty data" };
   }
 
-  // Parse record count from CSV content
-  const lines = csvText.split("\n").filter((l) => l.trim().length > 0);
-  const recordCount = Math.max(0, lines.length - 1); // minus header row
+  // Build metadata: prefer backend headers, fall back to client-side inference
+  const h = result.headers;
+  const csvLines = csvText.split("\n").filter((l) => l.trim().length > 0);
+  const fallbackCount = Math.max(0, csvLines.length - 1); // minus header row
+
   const metadata: ApiExportMetadata = {
-    generatedAt: new Date().toISOString(),
-    recordCount,
-    version: "1",
+    generatedAt: h?.["x-export-generated-at"] || new Date().toISOString(),
+    recordCount: parseRecordCount(h?.["x-export-record-count"], fallbackCount),
+    version: h?.["x-export-version"] || "1",
   };
 
   // Write to temp file using Expo SDK 54 File API
@@ -59,4 +63,11 @@ export async function exportAndShare(): Promise<ExportResult> {
   });
 
   return { ok: true, metadata };
+}
+
+/** Safely parse record count header, returning fallback on invalid/missing values */
+function parseRecordCount(headerValue: string | undefined, fallback: number): number {
+  if (!headerValue) return fallback;
+  const parsed = parseInt(headerValue, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
