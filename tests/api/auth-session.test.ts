@@ -170,7 +170,7 @@ describe("real auth session", () => {
     expect(sessionBody).toEqual(
       expect.objectContaining({
         authenticated: true,
-        session: { userId: "u1" },
+        session: expect.objectContaining({ userId: "u1", tier: "free" }),
         requestId: expect.any(String),
         timestamp: expect.any(String)
       })
@@ -225,7 +225,7 @@ describe("real auth session", () => {
     expect(sessionBody).toEqual(
       expect.objectContaining({
         authenticated: true,
-        session: { userId: "u1" }
+        session: expect.objectContaining({ userId: "u1", tier: "free" })
       })
     );
   });
