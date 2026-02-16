@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { SafeAreaView, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
   useFonts,
@@ -17,7 +17,8 @@ import {
 } from "@expo-google-fonts/raleway";
 import * as SplashScreen from "expo-splash-screen";
 
-import { ComponentDemo } from "./src/screens/ComponentDemo";
+import { AuthProvider } from "./src/lib/auth/AuthContext";
+import { RootNavigator } from "./src/navigation/RootNavigator";
 import { colors } from "./src/config/theme";
 
 SplashScreen.preventAutoHideAsync();
@@ -46,15 +47,17 @@ export default function App() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} onLayout={onLayoutRootView}>
+    <View style={styles.root} onLayout={onLayoutRootView}>
       <StatusBar style="dark" />
-      <ComponentDemo />
-    </SafeAreaView>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  root: {
     flex: 1,
     backgroundColor: colors.cream[50],
   },
