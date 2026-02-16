@@ -3,8 +3,11 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Text, StyleSheet } from "react-native";
 import { colors } from "../config/theme";
 
-// Placeholder screens — will be replaced in Tasks 3-6
-import { PlaceholderScreen } from "../screens/PlaceholderScreen";
+import { TodayScreen } from "../screens/TodayScreen";
+import { TrendsScreen } from "../screens/TrendsScreen";
+import { AlertsScreen } from "../screens/AlertsScreen";
+import { InsightsScreen } from "../screens/InsightsScreen";
+import { ProfileScreen } from "../screens/ProfileScreen";
 
 export type MainTabParamList = {
   Today: undefined;
@@ -61,27 +64,27 @@ export function MainTabs() {
     >
       <Tab.Screen
         name="Today"
-        component={PlaceholderScreen}
+        component={TodayScreen}
         options={{ title: "Today" }}
       />
       <Tab.Screen
         name="Trends"
-        component={PlaceholderScreen}
+        component={TrendsScreen}
         options={{ title: "Trends" }}
       />
       <Tab.Screen
         name="Alerts"
-        component={PlaceholderScreen}
+        component={AlertsScreen}
         options={{ title: "Alerts" }}
       />
       <Tab.Screen
         name="Insights"
-        component={PlaceholderScreen}
+        component={InsightsScreen}
         options={{ title: "Insights" }}
       />
       <Tab.Screen
         name="Profile"
-        component={PlaceholderScreen}
+        component={ProfileScreen}
         options={{ title: "Profile" }}
       />
     </Tab.Navigator>
