@@ -21,6 +21,8 @@ Mobile companion for Drift - personal stability early-warning system.
 - Product design: `docs/plans/2026-02-15-drift-mobile-app-design.md`
 - Screen PRD: `mobile-app/docs/v1-screen-prd.md`
 - API field mapping: `mobile-app/docs/api-field-mapping.md`
+- Mobile architecture: `mobile-app/docs/mobile-architecture.md`
+- Execution plan: `mobile-app/docs/execution-plan.md`
 
 ## Getting Started
 
