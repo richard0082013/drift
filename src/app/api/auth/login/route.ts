@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { issueSessionCookie } from "@/lib/auth/session";
+import { createSessionToken, issueSessionCookie, SESSION_TTL_SECONDS } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit/log";
 import { checkRateLimit, getRateLimitConfig } from "@/lib/security/rate-limit";
 import { trackMetricEvent } from "@/lib/metrics/events";
@@ -83,14 +83,19 @@ export async function POST(request: Request) {
     }
   });
 
+  const accessToken = createSessionToken(user.id);
+
   const response = NextResponse.json({
     user: {
       id: user.id,
       email: user.email,
       name: user.name
-    }
+    },
+    accessToken,
+    tokenType: "Bearer",
+    expiresIn: SESSION_TTL_SECONDS
   });
-  response.headers.append("set-cookie", issueSessionCookie(user.id));
+  response.headers.append("set-cookie", issueSessionCookie(user.id, accessToken));
   await trackMetricEvent({
     event: "auth.login",
     actorId: user.id,

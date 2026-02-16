@@ -47,6 +47,10 @@ describe("POST /api/auth/login", () => {
 
     expect(response.status).toBe(200);
     expect(body.user.id).toBe("u1");
+    expect(typeof body.accessToken).toBe("string");
+    expect(body.accessToken.length).toBeGreaterThan(0);
+    expect(body.tokenType).toBe("Bearer");
+    expect(body.expiresIn).toBe(604800);
     const cookie = response.headers.get("set-cookie") ?? "";
     expect(cookie).toContain("drift_session=");
     expect(cookie).toContain("HttpOnly");
@@ -122,6 +126,9 @@ describe("POST /api/auth/login", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.user.email).toBe("u1@example.com");
+    expect(typeof body.accessToken).toBe("string");
+    expect(body.tokenType).toBe("Bearer");
+    expect(body.expiresIn).toBe(604800);
     expect(notificationLogCreateMock).toHaveBeenCalledTimes(2);
   });
 });

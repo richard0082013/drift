@@ -198,4 +198,55 @@ describe("real auth session", () => {
     expect(typeof healthAnonBody.requestId).toBe("string");
     expect(typeof healthAnonBody.timestamp).toBe("string");
   });
+
+  it("accepts valid Bearer token for session endpoint", async () => {
+    const loginRes = await loginPost(
+      new Request("http://localhost/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "u1@example.com",
+          name: "U1"
+        })
+      })
+    );
+    const loginBody = await loginRes.json();
+
+    const sessionRes = await sessionGet(
+      new Request("http://localhost/api/auth/session", {
+        headers: {
+          authorization: `Bearer ${loginBody.accessToken as string}`
+        }
+      })
+    );
+    const sessionBody = await sessionRes.json();
+
+    expect(sessionRes.status).toBe(200);
+    expect(sessionBody).toEqual(
+      expect.objectContaining({
+        authenticated: true,
+        session: { userId: "u1" }
+      })
+    );
+  });
+
+  it("returns 401 for invalid Bearer token on session endpoint", async () => {
+    const sessionRes = await sessionGet(
+      new Request("http://localhost/api/auth/session", {
+        headers: {
+          authorization: "Bearer invalid.token.value"
+        }
+      })
+    );
+    const sessionBody = await sessionRes.json();
+
+    expect(sessionRes.status).toBe(401);
+    expect(sessionBody).toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: "UNAUTHORIZED"
+        })
+      })
+    );
+  });
 });

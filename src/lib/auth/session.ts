@@ -9,7 +9,7 @@ const AUTH_ERROR = {
 };
 
 const DEFAULT_SESSION_SECRET = "drift-dev-session-secret-change-me";
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 export const SESSION_COOKIE_NAME = "drift_session";
 
 function readCookie(request: Request, name: string): string | null {
@@ -90,9 +90,8 @@ export function createSessionToken(userId: string, now = Date.now()) {
   return `${payloadEncoded}.${signature}`;
 }
 
-export function issueSessionCookie(userId: string) {
+export function issueSessionCookie(userId: string, token = createSessionToken(userId)) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  const token = createSessionToken(userId);
   return `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}${secure}`;
 }
 
@@ -102,6 +101,17 @@ export function clearSessionCookie() {
 }
 
 export function getSessionUserId(request: Request): string | null {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const bearerToken = authHeader.slice(7).trim();
+    if (bearerToken) {
+      const bearerPayload = parseSessionToken(bearerToken);
+      if (bearerPayload?.sub) {
+        return bearerPayload.sub;
+      }
+    }
+  }
+
   const sessionToken = readCookie(request, SESSION_COOKIE_NAME);
   if (!sessionToken) {
     return null;
