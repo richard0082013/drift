@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   storeSession,
   clearSession,
@@ -9,12 +10,16 @@ import {
 import { api } from "../api";
 import type { ApiLoginRequest, ApiLoginResponse } from "../../types/api";
 
+const ONBOARDED_KEY = "drift:onboarded";
+
 type AuthState = {
   isLoading: boolean;
   isAuthenticated: boolean;
+  isOnboarded: boolean;
   user: StoredUser | null;
   login: (req: ApiLoginRequest) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
+  completeOnboarding: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -22,13 +27,22 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isOnboarded, setIsOnboarded] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
 
   // Check for existing session on mount
   useEffect(() => {
     (async () => {
       try {
-        const hasToken = await hasSession();
+        const [hasToken, onboarded] = await Promise.all([
+          hasSession(),
+          AsyncStorage.getItem(ONBOARDED_KEY),
+        ]);
+
+        if (onboarded === "true") {
+          setIsOnboarded(true);
+        }
+
         if (hasToken) {
           // Validate session with backend
           const result = await api.get<{ authenticated: boolean }>("/api/auth/session");
@@ -73,9 +87,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(false);
   }, []);
 
+  const completeOnboarding = useCallback(async () => {
+    await AsyncStorage.setItem(ONBOARDED_KEY, "true");
+    setIsOnboarded(true);
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ isLoading, isAuthenticated, user, login, logout }}
+      value={{ isLoading, isAuthenticated, isOnboarded, user, login, logout, completeOnboarding }}
     >
       {children}
     </AuthContext.Provider>

@@ -6,11 +6,12 @@ import { AuthStack } from "./AuthStack";
 import { MainTabs } from "./MainTabs";
 import { LoadingState } from "../components/LoadingState";
 import { OfflineBanner } from "../components/OfflineBanner";
+import { OnboardingScreen } from "../screens/OnboardingScreen";
 import { View, StyleSheet } from "react-native";
 import { colors } from "../config/theme";
 
 export function RootNavigator() {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, isOnboarded, completeOnboarding } = useAuth();
   const { isOnline } = useNetwork();
 
   if (isLoading) {
@@ -21,11 +22,26 @@ export function RootNavigator() {
     );
   }
 
+  // Not authenticated → auth stack
+  if (!isAuthenticated) {
+    return (
+      <NavigationContainer>
+        <AuthStack />
+      </NavigationContainer>
+    );
+  }
+
+  // Authenticated but not onboarded → onboarding flow
+  if (!isOnboarded) {
+    return <OnboardingScreen onComplete={completeOnboarding} />;
+  }
+
+  // Authenticated + onboarded → main tabs
   return (
     <NavigationContainer>
       <View style={styles.root}>
         <OfflineBanner visible={!isOnline} />
-        {isAuthenticated ? <MainTabs /> : <AuthStack />}
+        <MainTabs />
       </View>
     </NavigationContainer>
   );
