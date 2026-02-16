@@ -7,7 +7,7 @@
  */
 
 export type { ApiClient, ApiResult } from "./client";
-export { RealApiClient } from "./client";
+export { RealApiClient, setOnUnauthorized } from "./client";
 export { MockApiClient } from "./mock";
 
 import { RealApiClient } from "./client";

@@ -27,7 +27,7 @@ export type ApiLoginResponse = {
 
 export type ApiSessionResponse = {
   authenticated: boolean;
-  session: { userId: string };
+  session: { userId: string; tier: "free" | "pro" };
   requestId: string;
   timestamp: string;
 };

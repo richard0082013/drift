@@ -1,5 +1,6 @@
 import React from "react";
-import { MOCK_TIER, isFeatureUnlocked } from "../config/tier";
+import { isFeatureUnlocked } from "../config/tier";
+import { useAuth } from "../lib/auth/AuthContext";
 import { ProUpgradeCard } from "./ProUpgradeCard";
 
 type ProGateProps = {
@@ -16,11 +17,12 @@ type ProGateProps = {
  * If the current tier has access to the feature, renders children.
  * Otherwise, renders a fallback (default: ProUpgradeCard).
  *
- * UI phase: uses MOCK_TIER constant. Change to "pro" to unlock all.
- * Integration phase: tier will come from backend.
+ * Tier is read from AuthContext (sourced from backend session).
  */
 export function ProGate({ feature, children, fallback }: ProGateProps) {
-  if (isFeatureUnlocked(feature, MOCK_TIER)) {
+  const { tier } = useAuth();
+
+  if (isFeatureUnlocked(feature, tier)) {
     return <>{children}</>;
   }
 

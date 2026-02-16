@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert } from "react
 
 import { useAuth } from "../lib/auth/AuthContext";
 import { api } from "../lib/api";
+import { exportAndShare } from "../lib/export/csv-export";
 import { Card, CardBody, Button, Badge } from "../components/ui";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
@@ -47,6 +48,27 @@ export function ProfileScreen() {
     await fetchProfile();
     setRefreshing(false);
   }, [fetchProfile]);
+
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const result = await exportAndShare();
+      if (!result.ok) {
+        Alert.alert("Export Failed", result.error);
+      } else {
+        Alert.alert(
+          "Export Complete",
+          `Exported ${result.metadata.recordCount} records.`
+        );
+      }
+    } catch {
+      Alert.alert("Export Failed", "An unexpected error occurred.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -127,7 +149,7 @@ export function ProfileScreen() {
       {/* Actions */}
       <View style={styles.actions}>
         <Button title="Reminder Settings" variant="secondary" onPress={() => {/* TODO: modal */}} />
-        <Button title="Account & Data" variant="secondary" onPress={() => {/* TODO: modal */}} />
+        <Button title="Export Data (CSV)" variant="secondary" onPress={handleExport} loading={exporting} />
         <Button title="Privacy" variant="ghost" onPress={() => {/* TODO: open privacy */}} />
         <Button title="Log Out" variant="danger" onPress={handleLogout} />
       </View>

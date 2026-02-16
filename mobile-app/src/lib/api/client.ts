@@ -41,6 +41,17 @@ function resolveBaseUrl(): string {
 
 const BASE_URL = resolveBaseUrl();
 
+/** Optional callback invoked on 401 responses (token expired) */
+let onUnauthorizedCallback: (() => void) | null = null;
+
+/**
+ * Register a callback to be invoked when any API call receives a 401.
+ * Used by AuthContext to trigger automatic logout/redirect.
+ */
+export function setOnUnauthorized(cb: (() => void) | null): void {
+  onUnauthorizedCallback = cb;
+}
+
 export class RealApiClient implements ApiClient {
   async get<T>(path: string, params?: Record<string, string>): Promise<ApiResult<T>> {
     const url = new URL(path, BASE_URL);
@@ -81,6 +92,11 @@ export class RealApiClient implements ApiClient {
 
       if (res.ok) {
         return { ok: true, data: data as T, status: res.status };
+      }
+
+      // 401 Unauthorized — token expired, trigger auto-logout
+      if (res.status === 401 && onUnauthorizedCallback) {
+        onUnauthorizedCallback();
       }
 
       // Error body may be JSON or plain text

@@ -1,8 +1,8 @@
 /**
  * Drift Tier Gating Configuration
  *
- * UI phase: MOCK_TIER controls feature access.
- * Integration phase: tier will come from backend session or subscription endpoint.
+ * Tier is sourced from backend session (GET /api/auth/session → session.tier).
+ * ProGate reads tier from AuthContext; MOCK_TIER kept for testing only.
  */
 
 export type Tier = "free" | "pro";

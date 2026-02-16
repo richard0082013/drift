@@ -7,8 +7,9 @@ import {
   getUser,
   type StoredUser,
 } from "./session";
-import { api } from "../api";
-import type { ApiLoginRequest, ApiLoginResponse } from "../../types/api";
+import { api, setOnUnauthorized } from "../api";
+import type { ApiLoginRequest, ApiLoginResponse, ApiSessionResponse } from "../../types/api";
+import type { Tier } from "../../config/tier";
 
 const ONBOARDED_KEY = "drift:onboarded";
 
@@ -17,6 +18,8 @@ type AuthState = {
   isAuthenticated: boolean;
   isOnboarded: boolean;
   user: StoredUser | null;
+  /** User's subscription tier from backend session. Defaults to "free". */
+  tier: Tier;
   login: (req: ApiLoginRequest) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
@@ -29,6 +32,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
+  const [tier, setTier] = useState<Tier>("free");
+
+  // Register 401 interceptor — auto-logout on expired token
+  useEffect(() => {
+    setOnUnauthorized(() => {
+      clearSession().then(() => {
+        setUser(null);
+        setTier("free");
+        setIsAuthenticated(false);
+      });
+    });
+    return () => setOnUnauthorized(null);
+  }, []);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -44,11 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (hasToken) {
-          // Validate session with backend
-          const result = await api.get<{ authenticated: boolean }>("/api/auth/session");
+          // Validate session with backend and read tier
+          const result = await api.get<ApiSessionResponse>("/api/auth/session");
           if (result.ok && result.data.authenticated) {
             const storedUser = await getUser();
             setUser(storedUser);
+            setTier(result.data.session.tier ?? "free");
             setIsAuthenticated(true);
           } else {
             // Token invalid, clear
@@ -70,6 +87,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await storeSession(result.data);
       setUser(result.data.user);
       setIsAuthenticated(true);
+
+      // Fetch tier from session after login
+      try {
+        const sessionResult = await api.get<ApiSessionResponse>("/api/auth/session");
+        if (sessionResult.ok) {
+          setTier(sessionResult.data.session.tier ?? "free");
+        }
+      } catch {
+        // Tier defaults to "free" if session call fails
+      }
+
       return { ok: true };
     }
 
@@ -84,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     await clearSession();
     setUser(null);
+    setTier("free");
     setIsAuthenticated(false);
   }, []);
 
@@ -94,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ isLoading, isAuthenticated, isOnboarded, user, login, logout, completeOnboarding }}
+      value={{ isLoading, isAuthenticated, isOnboarded, user, tier, login, logout, completeOnboarding }}
     >
       {children}
     </AuthContext.Provider>

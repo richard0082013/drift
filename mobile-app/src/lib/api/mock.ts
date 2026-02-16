@@ -49,7 +49,7 @@ const MOCK_LOGIN_RESPONSE: ApiLoginResponse = {
 
 const MOCK_SESSION: ApiSessionResponse = {
   authenticated: true,
-  session: { userId: MOCK_USER.id },
+  session: { userId: MOCK_USER.id, tier: "free" },
   requestId: "req_mock_1",
   timestamp: new Date().toISOString(),
 };
