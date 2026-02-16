@@ -34,7 +34,7 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
     if (online && wasOffline.current) {
       try {
         const result = await flushCheckinQueue(api);
-        if (result.flushed > 0 || result.failed > 0) {
+        if (result.flushed > 0 || result.failed > 0 || result.purged > 0) {
           setLastFlush(result);
         }
       } catch {

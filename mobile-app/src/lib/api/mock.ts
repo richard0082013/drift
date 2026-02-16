@@ -74,20 +74,6 @@ const MOCK_CHECKIN_TODAY_CHECKED: ApiCheckInTodayResponse = {
   },
 };
 
-const MOCK_TRENDS_7: ApiTrendsResponse = {
-  days: 7,
-  data: Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return {
-      date: d.toISOString().slice(0, 10),
-      energy: 3 + Math.round(Math.sin(i) * 1.5),
-      stress: 2 + Math.round(Math.cos(i) * 1),
-      social: 3 + Math.round(Math.sin(i + 1)),
-    };
-  }),
-};
-
 const MOCK_ALERTS: ApiAlertsResponse = {
   data: [
     {
@@ -184,10 +170,26 @@ export class MockApiClient implements ApiClient {
     }
 
     if (path === "/api/trends") {
-      if (this.scenario === "empty") {
-        return success({ days: 7, data: [] }) as ApiResult<T>;
+      const raw = Number(params?.days ?? 7);
+      if (raw !== 7 && raw !== 30) {
+        return error("VALIDATION_ERROR", "days must be 7 or 30.", 400) as ApiResult<T>;
       }
-      return success(MOCK_TRENDS_7) as ApiResult<T>;
+      const days = raw as 7 | 30;
+      if (this.scenario === "empty") {
+        return success({ days, data: [] } satisfies ApiTrendsResponse) as ApiResult<T>;
+      }
+      // Generate data matching requested period
+      const trendData = Array.from({ length: days }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (days - 1 - i));
+        return {
+          date: d.toISOString().slice(0, 10),
+          energy: 3 + Math.round(Math.sin(i) * 1.5),
+          stress: 2 + Math.round(Math.cos(i) * 1),
+          social: 3 + Math.round(Math.sin(i + 1)),
+        };
+      });
+      return success({ days, data: trendData } satisfies ApiTrendsResponse) as ApiResult<T>;
     }
 
     if (path === "/api/alerts") {
@@ -198,15 +200,41 @@ export class MockApiClient implements ApiClient {
     }
 
     if (path === "/api/insights/weekly") {
+      const rawDays = Number(params?.days ?? 7);
+      if (!Number.isInteger(rawDays) || rawDays < 1 || rawDays > 14) {
+        return error("VALIDATION_ERROR", "days must be an integer between 1 and 14.", 400) as ApiResult<T>;
+      }
+      const days = rawDays;
+      const weekEnd = new Date();
+      const weekStart = new Date();
+      weekStart.setDate(weekEnd.getDate() - (days - 1));
+      const base = {
+        weekStart: weekStart.toISOString().slice(0, 10),
+        weekEnd: weekEnd.toISOString().slice(0, 10),
+        days,
+        requestId: "req_mock_2",
+        timestamp: new Date().toISOString(),
+      };
       if (this.scenario === "empty") {
         return success({
-          ...MOCK_INSIGHTS,
-          summary: { ...MOCK_INSIGHTS.summary, checkinCount: 0, hasEnoughData: false },
+          ...base,
+          summary: {
+            checkinCount: 0,
+            alertCount: 0,
+            averages: { energy: null, stress: null, social: null, driftIndex: null },
+            driftLevel: "low" as const,
+            hasEnoughData: false,
+          },
           highlights: [],
           suggestions: [],
-        }) as ApiResult<T>;
+        } satisfies ApiWeeklyInsights) as ApiResult<T>;
       }
-      return success(MOCK_INSIGHTS) as ApiResult<T>;
+      return success({
+        ...base,
+        summary: MOCK_INSIGHTS.summary,
+        highlights: MOCK_INSIGHTS.highlights,
+        suggestions: MOCK_INSIGHTS.suggestions,
+      } satisfies ApiWeeklyInsights) as ApiResult<T>;
     }
 
     if (path === "/api/settings/reminder") {
@@ -245,15 +273,24 @@ export class MockApiClient implements ApiClient {
         } as ApiResult<T>;
       }
       mockCheckedIn = true;
-      return success(
-        {
-          checkin: {
-            ...MOCK_CHECKIN_TODAY_CHECKED.checkin!,
-            ...(body as Record<string, unknown>),
-          },
+      // Build response using only backend-shaped fields (camelCase)
+      const req = body as Record<string, unknown> | undefined;
+      const now = new Date().toISOString();
+      const checkinResponse: ApiCheckInResponse = {
+        checkin: {
+          id: `ck_${Date.now()}`,
+          date: (req?.date as string) ?? now.slice(0, 10),
+          energy: (req?.energy as number) ?? 3,
+          stress: (req?.stress as number) ?? 3,
+          social: (req?.social as number) ?? 3,
+          // Backend maps snake_case key_contact → camelCase keyContact
+          keyContact: (req?.key_contact as string | undefined) ?? null,
+          notes: null,
+          createdAt: now,
+          updatedAt: now,
         },
-        201,
-      ) as ApiResult<T>;
+      };
+      return success(checkinResponse, 201) as ApiResult<T>;
     }
 
     if (path === "/api/settings/reminder") {
@@ -277,6 +314,3 @@ export class MockApiClient implements ApiClient {
     return this.post<T>(path);
   }
 }
-
-/** Singleton mock client for UI phase */
-export const mockApi = new MockApiClient();

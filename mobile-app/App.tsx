@@ -19,6 +19,7 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { AuthProvider } from "./src/lib/auth/AuthContext";
 import { NetworkProvider } from "./src/lib/offline/NetworkContext";
+import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { colors } from "./src/config/theme";
 
@@ -50,11 +51,13 @@ export default function App() {
   return (
     <View style={styles.root} onLayout={onLayoutRootView}>
       <StatusBar style="dark" />
-      <NetworkProvider>
-        <AuthProvider>
-          <RootNavigator />
-        </AuthProvider>
-      </NetworkProvider>
+      <ErrorBoundary>
+        <NetworkProvider>
+          <AuthProvider>
+            <RootNavigator />
+          </AuthProvider>
+        </NetworkProvider>
+      </ErrorBoundary>
     </View>
   );
 }

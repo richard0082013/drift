@@ -5,6 +5,7 @@
  * During UI phase, use MockApiClient. During integration, switch to RealApiClient.
  */
 
+import { Platform } from "react-native";
 import { getToken } from "../auth/session";
 import type { ApiErrorResponse } from "../../types/api";
 
@@ -20,9 +21,25 @@ export interface ApiClient {
 
 // ── Real API Client (for integration phase) ──
 
-const BASE_URL = __DEV__
-  ? "http://localhost:3000"
-  : "https://drift.vercel.app";
+/**
+ * Base URL resolution:
+ * - Production: EXPO_PUBLIC_API_URL or default production URL
+ * - Dev: EXPO_PUBLIC_API_URL or platform-aware localhost
+ *   - Android emulator uses 10.0.2.2 (loopback alias)
+ *   - iOS simulator / web uses localhost
+ */
+function resolveBaseUrl(): string {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) return envUrl.replace(/\/+$/, ""); // strip trailing slash
+
+  if (!__DEV__) return "https://drift.vercel.app";
+
+  // Android emulator cannot reach host via "localhost" — use 10.0.2.2
+  const host = Platform.OS === "android" ? "10.0.2.2" : "localhost";
+  return `http://${host}:3000`;
+}
+
+const BASE_URL = resolveBaseUrl();
 
 export class RealApiClient implements ApiClient {
   async get<T>(path: string, params?: Record<string, string>): Promise<ApiResult<T>> {
@@ -56,15 +73,23 @@ export class RealApiClient implements ApiClient {
 
     try {
       const res = await fetch(url, { ...init, headers });
-      const data = await res.json();
+
+      // Content-type aware parsing: /api/export returns CSV, everything else JSON
+      const contentType = res.headers.get("content-type") ?? "";
+      const isJson = contentType.includes("application/json");
+      const data = isJson ? await res.json() : await res.text();
 
       if (res.ok) {
         return { ok: true, data: data as T, status: res.status };
       }
 
+      // Error body may be JSON or plain text
+      const errorObj = isJson
+        ? (data as { error?: ApiErrorResponse["error"] }).error
+        : undefined;
       return {
         ok: false,
-        error: data.error ?? { code: "UNKNOWN", message: "Request failed" },
+        error: errorObj ?? { code: "UNKNOWN", message: String(data) || "Request failed" },
         status: res.status,
       };
     } catch {

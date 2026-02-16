@@ -60,7 +60,7 @@ export async function removeFromQueue(id: string): Promise<void> {
   await saveQueue(queue.filter((item) => item.id !== id));
 }
 
-export async function incrementRetry(id: string): Promise<void> {
+async function incrementRetry(id: string): Promise<void> {
   const queue = await getQueue();
   const item = queue.find((i) => i.id === id);
   if (item) {
@@ -83,40 +83,55 @@ export async function getQueueSize(): Promise<number> {
 export type FlushResult = {
   flushed: number;
   failed: number;
+  /** Number of permanently-failed items purged from the queue */
+  purged: number;
 };
 
+/** Guard against concurrent flush calls (e.g. rapid reconnect events) */
+let flushing = false;
+
 export async function flushCheckinQueue(apiClient: ApiClient): Promise<FlushResult> {
-  const queue = await getQueue();
-  let flushed = 0;
-  let failed = 0;
+  // Prevent concurrent flush — return no-op if already running
+  if (flushing) return { flushed: 0, failed: 0, purged: 0 };
+  flushing = true;
 
-  for (const item of queue) {
-    if (item.retryCount >= MAX_RETRIES) {
-      // Skip permanently failed items
-      failed += 1;
-      continue;
+  try {
+    const queue = await getQueue();
+    let flushed = 0;
+    let failed = 0;
+    let purged = 0;
+
+    for (const item of queue) {
+      if (item.retryCount >= MAX_RETRIES) {
+        // Permanently failed — remove from queue to prevent infinite growth
+        await removeFromQueue(item.id);
+        purged += 1;
+        continue;
+      }
+
+      const result: ApiResult<ApiCheckInResponse> = await apiClient.post("/api/checkins", {
+        date: item.date,
+        energy: item.energy,
+        stress: item.stress,
+        social: item.social,
+        key_contact: item.keyContact || undefined,
+      });
+
+      if (result.ok) {
+        await removeFromQueue(item.id);
+        flushed += 1;
+      } else if (result.status === 409) {
+        // Duplicate — already submitted, treat as success
+        await removeFromQueue(item.id);
+        flushed += 1;
+      } else {
+        await incrementRetry(item.id);
+        failed += 1;
+      }
     }
 
-    const result: ApiResult<ApiCheckInResponse> = await apiClient.post("/api/checkins", {
-      date: item.date,
-      energy: item.energy,
-      stress: item.stress,
-      social: item.social,
-      key_contact: item.keyContact || undefined,
-    });
-
-    if (result.ok) {
-      await removeFromQueue(item.id);
-      flushed += 1;
-    } else if (result.status === 409) {
-      // Duplicate — already submitted, treat as success
-      await removeFromQueue(item.id);
-      flushed += 1;
-    } else {
-      await incrementRetry(item.id);
-      failed += 1;
-    }
+    return { flushed, failed, purged };
+  } finally {
+    flushing = false;
   }
-
-  return { flushed, failed };
 }

@@ -6,12 +6,12 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 
-import { useAuth } from "../lib/auth/AuthContext";
 import { api } from "../lib/api";
-import { Button, Card, CardBody, Input, SegmentedControl } from "../components/ui";
-import { colors, spacing } from "../config/theme";
+import { Button, Card, CardBody, SegmentedControl } from "../components/ui";
+import { colors } from "../config/theme";
 import type { ApiReminderSettingsResponse } from "../types/api";
 
 type OnboardingStep = "preferences" | "first-checkin" | "feedback";
@@ -65,13 +65,23 @@ function PreferenceStep({ onNext }: { onNext: () => void }) {
 
   const handleSave = async () => {
     setSaving(true);
-    await api.post<ApiReminderSettingsResponse>("/api/settings/reminder", {
-      reminderHourLocal: hour,
-      notificationsEnabled: true,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    });
-    setSaving(false);
-    onNext();
+    try {
+      const result = await api.post<ApiReminderSettingsResponse>("/api/settings/reminder", {
+        reminderHourLocal: hour,
+        notificationsEnabled: true,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      if (!result.ok) {
+        Alert.alert("Could not save", result.error.message, [{ text: "OK" }]);
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+      onNext();
+    } catch {
+      Alert.alert("Network error", "Please check your connection and try again.", [{ text: "OK" }]);
+      setSaving(false);
+    }
   };
 
   return (
@@ -139,15 +149,24 @@ function FirstCheckinStep({ onNext }: { onNext: () => void }) {
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-    await api.post("/api/checkins", {
-      date: dateStr,
-      energy,
-      stress,
-      social,
-    });
-
-    setSubmitting(false);
-    onNext();
+    try {
+      const result = await api.post("/api/checkins", {
+        date: dateStr,
+        energy,
+        stress,
+        social,
+      });
+      if (!result.ok) {
+        Alert.alert("Check-in failed", result.error.message, [{ text: "OK" }]);
+        setSubmitting(false);
+        return;
+      }
+      setSubmitting(false);
+      onNext();
+    } catch {
+      Alert.alert("Network error", "Please check your connection and try again.", [{ text: "OK" }]);
+      setSubmitting(false);
+    }
   };
 
   return (

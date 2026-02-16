@@ -1,17 +1,30 @@
 /**
  * API module barrel export.
  *
- * UI phase: exports mockApi as the default client.
- * Integration phase: switch to RealApiClient.
+ * Client selection:
+ * - __DEV__ (dev builds): MockApiClient by default, RealApiClient if EXPO_PUBLIC_USE_REAL_API=1
+ * - Production builds: always RealApiClient (mock is never shipped)
  */
 
 export type { ApiClient, ApiResult } from "./client";
 export { RealApiClient } from "./client";
-export { MockApiClient, mockApi } from "./mock";
+export { MockApiClient } from "./mock";
 
-/**
- * Current active API client.
- * Switch to `new RealApiClient()` during integration phase.
- */
-import { mockApi } from "./mock";
-export const api = mockApi;
+import { RealApiClient } from "./client";
+import { MockApiClient } from "./mock";
+
+function createClient() {
+  if (!__DEV__) {
+    // Production: always real API — mock code tree-shakes out
+    return new RealApiClient();
+  }
+
+  // Dev: mock by default, opt-in to real via env
+  if (process.env.EXPO_PUBLIC_USE_REAL_API === "1") {
+    return new RealApiClient();
+  }
+
+  return new MockApiClient();
+}
+
+export const api = createClient();
