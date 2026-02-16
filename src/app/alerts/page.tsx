@@ -165,7 +165,9 @@ export default function AlertsPage() {
       <h1 className="text-2xl font-heading font-bold text-slate-800">Alerts</h1>
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
-      {!loading && !error && data.length === 0 ? <EmptyState message="No active alerts." /> : null}
+      {!loading && !error && data.length === 0 ? (
+        <EmptyState message="No active alerts. Alerts appear when your check-in patterns show notable changes." />
+      ) : null}
       {!loading && !error && data.length > 0 ? (
         <div className="space-y-4">
           {data.map((item) => (

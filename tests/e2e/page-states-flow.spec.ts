@@ -158,7 +158,7 @@ test.describe("page states: settings / insights / trends / alerts", () => {
     await expect(page.getByText("Loading...")).toBeVisible();
     trendsGate.resolve();
 
-    await expect(page.getByText("No trend data yet.")).toBeVisible();
+    await expect(page.getByText(/No trend data yet/)).toBeVisible();
 
     await page.unroute("**/api/trends?days=7");
     await page.route("**/api/trends?days=7", async (route) => {
@@ -189,7 +189,7 @@ test.describe("page states: settings / insights / trends / alerts", () => {
     await expect(page.getByText("Loading...")).toBeVisible();
     alertsGate.resolve();
 
-    await expect(page.getByText("No active alerts.")).toBeVisible();
+    await expect(page.getByText(/No active alerts/)).toBeVisible();
 
     await page.unroute("**/api/alerts");
     await page.route("**/api/alerts", async (route) => {

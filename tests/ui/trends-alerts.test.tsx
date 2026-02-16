@@ -148,7 +148,7 @@ describe("trends and alerts UI", () => {
         onPeriodChange={() => undefined}
       />
     );
-    expect(screen.getByText("No trend data yet.")).toBeInTheDocument();
+    expect(screen.getByText(/No trend data yet/)).toBeInTheDocument();
 
     render(<AlertsPage />);
 

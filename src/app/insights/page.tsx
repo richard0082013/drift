@@ -334,7 +334,7 @@ export default function InsightsPage() {
       {!loading && !error && !insights ? (
         <Card>
           <CardBody className="py-8 text-center">
-            <p className="text-sm text-slate-500">No weekly insights yet.</p>
+            <p className="text-sm text-slate-500">No weekly insights yet. Keep checking in daily — insights generate after a few days of data.</p>
           </CardBody>
         </Card>
       ) : null}
