@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, RefreshControl } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-
 import { api } from "../lib/api";
+import { useNetwork, enqueue } from "../lib/offline";
 import { Card, CardBody, Button, Badge } from "../components/ui";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
@@ -11,6 +9,7 @@ import { colors } from "../config/theme";
 import type { ApiCheckInTodayResponse } from "../types/api";
 
 export function TodayScreen() {
+  const { isOnline } = useNetwork();
   const [status, setStatus] = useState<"loading" | "error" | "loaded">("loading");
   const [data, setData] = useState<ApiCheckInTodayResponse | null>(null);
   const [error, setError] = useState<string>("");
@@ -126,6 +125,7 @@ export function TodayScreen() {
           }}
           isAlreadyCheckedIn={checkedIn}
           existingCheckin={checkin}
+          isOnline={isOnline}
         />
       ) : null}
     </ScrollView>
@@ -144,6 +144,7 @@ type CheckinModalProps = {
   onSuccess: () => void;
   isAlreadyCheckedIn: boolean;
   existingCheckin: ApiCheckIn | null | undefined;
+  isOnline: boolean;
 };
 
 function CheckinModal({
@@ -152,6 +153,7 @@ function CheckinModal({
   onSuccess,
   isAlreadyCheckedIn,
   existingCheckin,
+  isOnline,
 }: CheckinModalProps) {
   const [energy, setEnergy] = useState<number | null>(null);
   const [stress, setStress] = useState<number | null>(null);
@@ -172,6 +174,22 @@ function CheckinModal({
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
+    // Offline: queue locally and show success
+    if (!isOnline) {
+      await enqueue({
+        date: dateStr,
+        energy: energy!,
+        stress: stress!,
+        social: social!,
+        keyContact: keyContact.trim() || undefined,
+      });
+      setSubmitting(false);
+      setSuccess(true);
+      setTimeout(() => onSuccess(), 1500);
+      return;
+    }
+
+    // Online: submit directly
     const result = await api.post<ApiCheckInResponse>("/api/checkins", {
       date: dateStr,
       energy,

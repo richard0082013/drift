@@ -18,6 +18,7 @@ import {
 import * as SplashScreen from "expo-splash-screen";
 
 import { AuthProvider } from "./src/lib/auth/AuthContext";
+import { NetworkProvider } from "./src/lib/offline/NetworkContext";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { colors } from "./src/config/theme";
 
@@ -49,9 +50,11 @@ export default function App() {
   return (
     <View style={styles.root} onLayout={onLayoutRootView}>
       <StatusBar style="dark" />
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
+      <NetworkProvider>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </NetworkProvider>
     </View>
   );
 }
