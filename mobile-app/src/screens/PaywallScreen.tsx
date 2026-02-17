@@ -46,12 +46,13 @@ const COMPARISON_ROWS: ComparisonRow[] = [
 ];
 
 export function PaywallScreen({ navigation, route }: Props) {
-  const source = route.params?.source;
+  const source = route.params?.source ?? "direct";
 
   const handleUpgrade = () => {
     // TODO: Wire to App Store / Play Store subscription once billing is ready.
     // For now, open a placeholder URL or show a coming-soon message.
-    Linking.openURL("https://drift.vercel.app/pro").catch(() => {});
+    // `source` param is passed for future analytics (e.g. which feature gate led here).
+    Linking.openURL(`https://drift.vercel.app/pro?ref=${encodeURIComponent(source)}`).catch(() => {});
   };
 
   const handleDismiss = () => {

@@ -55,15 +55,17 @@ export function useConversionTrigger(): ConversionTriggerResult {
     // Never trigger before first check-in
     if (checkinCount < 1) return;
 
-    // Day 7 lock takes priority over Day 3 teaser
+    // Day 7 lock takes priority over Day 3 teaser.
+    // When day7 fires, also suppress day3 so it can't fire on a later evaluate.
     if (checkinCount >= 7 && !firedRef.current.has("day7_lock")) {
       firedRef.current.add("day7_lock");
+      firedRef.current.add("day3_teaser"); // suppress lower-tier trigger
       setActiveTrigger("day7_lock");
       setShouldShowPaywall(true);
       return;
     }
 
-    // Day 3 teaser
+    // Day 3 teaser (only if day7 hasn't already fired this session)
     if (checkinCount >= 3 && !firedRef.current.has("day3_teaser")) {
       firedRef.current.add("day3_teaser");
       setActiveTrigger("day3_teaser");
